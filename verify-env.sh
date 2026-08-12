@@ -546,6 +546,88 @@ except Exception:
 fi
 rm -f "$JAR" "$JAR.login"
 
+step "The EHR launch completes"
+# An EHR launch is pure redirects, with no single-page application anywhere in it, so curl is
+# sufficient here in a way it was not for the patient picker. Each hop below failed at some point
+# during this work, and each failed in a way that looked like something else.
+EJAR="$(mktemp)"
+DEV_USER="${SMART_DEV_USER:-doctor}"
+
+# A clinician already working in OpenMRS: the launch servlet refuses an unauthenticated request.
+curl -s -u "$DEV_USER:$DEV_PASSWORD" -c "$EJAR" --max-time 25 "$OPENMRS/ws/rest/v1/session" -o /dev/null
+LOC_UUID="$(curl -s -b "$EJAR" --max-time 25 "$OPENMRS/ws/rest/v1/location?limit=1" 2>/dev/null | python3 -c "
+import sys, json
+try: print(json.load(sys.stdin)['results'][0]['uuid'])
+except Exception: print('')")"
+curl -s -b "$EJAR" -c "$EJAR" --max-time 25 -X POST -H 'Content-Type: application/json' \
+  -d "{\"sessionLocation\":\"$LOC_UUID\"}" "$OPENMRS/ws/rest/v1/session" -o /dev/null
+
+EHR_PATIENT="$(curl -s -b "$EJAR" --max-time 25 "$OPENMRS/ws/rest/v1/patient?q=John&limit=1&v=custom:(uuid)" 2>/dev/null | python3 -c "
+import sys, json
+try: print(json.load(sys.stdin)['results'][0]['uuid'])
+except Exception: print('')")"
+
+if [ -z "$EHR_PATIENT" ]; then
+  fail "a patient is available to launch for" "the search returned nothing"
+else
+  APP_CB="http://localhost:3000/"
+  NOTIFY="$(curl -s -b "$EJAR" -c "$EJAR" -o /dev/null -D - --max-time 25 \
+    "$OPENMRS/ms/smartEhrLaunchServlet?launchUrl=$(python3 -c "import urllib.parse;print(urllib.parse.quote('$APP_CB'))")&launchContext=patient&patientId=$EHR_PATIENT" \
+    2>/dev/null | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r')"
+
+  # SMART requires the EHR to notify the app with iss and launch.
+  case "$NOTIFY" in
+    *iss=*launch=*|*launch=*iss=*) pass "the EHR notifies the app with iss and launch" ;;
+    "") fail "the EHR notifies the app with iss and launch" "the launch servlet issued no redirect" ;;
+    *) fail "the EHR notifies the app with iss and launch" "got $NOTIFY" ;;
+  esac
+
+  HANDLE="$(N="$NOTIFY" python3 -c "
+import urllib.parse as u, os
+print(u.parse_qs(u.urlparse(os.environ['N']).query).get('launch', [''])[0])" 2>/dev/null)"
+  ISS="$(N="$NOTIFY" python3 -c "
+import urllib.parse as u, os
+print(u.parse_qs(u.urlparse(os.environ['N']).query).get('iss', [''])[0])" 2>/dev/null)"
+
+  if [ -z "$HANDLE" ]; then
+    fail "the launch notification carries a handle" "none present"
+  else
+    # The app authorizes with the handle and the launch scope: the EHR has already chosen the patient,
+    # so it asks for the context that exists rather than for one to be established.
+    AUTHZ="$KC/realms/openmrs/protocol/openid-connect/auth?client_id=smartClient&response_type=code\
+&scope=openid%20launch&redirect_uri=$(python3 -c "import urllib.parse;print(urllib.parse.quote('$APP_CB'))")\
+&aud=$(I="$ISS" python3 -c "import urllib.parse,os;print(urllib.parse.quote(os.environ['I']))")\
+&launch=$(H="$HANDLE" python3 -c "import urllib.parse,os;print(urllib.parse.quote(os.environ['H']))")\
+&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
+
+    # Follow the whole chain: authorize -> OpenMRS redeems the handle -> back into the Keycloak flow.
+    APP_BACK="$(curl -s -b "$EJAR" -c "$EJAR" -o /dev/null -D - -L --max-redirs 10 --max-time 40 "$AUTHZ" 2>/dev/null \
+      | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r' | grep "^$APP_CB" | tail -1)"
+    EHR_CODE="$(A="$APP_BACK" python3 -c "
+import urllib.parse as u, os
+print(u.parse_qs(u.urlparse(os.environ['A']).query).get('code', [''])[0])" 2>/dev/null)"
+
+    if [ -z "$EHR_CODE" ]; then
+      fail "the EHR launch reaches the app with an authorization code" "ended at ${APP_BACK:-nowhere}"
+    else
+      # No password was asked for: the OpenMRS session is what authenticated this launch.
+      pass "the EHR launch reaches the app with an authorization code, without asking for a password"
+
+      EHR_GRANTED="$(curl -s --max-time 25 -X POST "$KC/realms/openmrs/protocol/openid-connect/token" \
+        -d client_id=smartClient -d grant_type=authorization_code -d "code=$EHR_CODE" \
+        -d "redirect_uri=$APP_CB" \
+        -d "code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" 2>/dev/null | python3 -c "
+import sys, json
+try: print(json.load(sys.stdin).get('patient') or 'no-patient-claim')
+except Exception: print('unreadable')")"
+      # The launch scope carried no context mapper for a while: the launch completed and returned no
+      # patient, which an app cannot tell apart from a patient it may not see.
+      check "the app receives the patient the EHR launched for" "$EHR_GRANTED" "$EHR_PATIENT"
+    fi
+  fi
+fi
+rm -f "$EJAR"
+
 step "Result"
 if [ "$FAILURES" -eq 0 ]; then
   echo "  the environment is ready for SMART launch development"

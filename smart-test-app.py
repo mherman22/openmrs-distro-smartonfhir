@@ -64,8 +64,14 @@ def page(title, body):
     ).encode()
 
 
-def authorize_url():
-    """Builds a standalone launch, with the PKCE and audience the server requires."""
+def authorize_url(ehr_launch=None, fhir_base=None):
+    """Builds an authorization request.
+
+    Standalone by default. For an EHR launch, pass the handle the EHR supplied and the FHIR base it
+    named in iss: the handle goes back as the launch parameter and the launch scope asks for the
+    context the EHR already established, instead of launch/patient which would ask the authorization
+    server to establish it.
+    """
     verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip("=")
     challenge = (
         base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
@@ -73,17 +79,25 @@ def authorize_url():
     state = secrets.token_urlsafe(16)
     PENDING[state] = verifier
 
+    scope = os.environ.get("SCOPE", DEFAULT_SCOPE)
+    if ehr_launch:
+        # launch replaces launch/patient: the EHR has already chosen the patient.
+        scope = "launch " + " ".join(s for s in scope.split() if not s.startswith("launch/"))
+
     params = {
         "client_id": CLIENT_ID,
         "response_type": "code",
-        "scope": os.environ.get("SCOPE", DEFAULT_SCOPE),
+        "scope": scope,
         "redirect_uri": REDIRECT_URI,
         "state": state,
         # Required: the server refuses a launch that does not name the FHIR server it means to use.
-        "aud": FHIR_BASE,
+        # In an EHR launch this is the iss the EHR supplied, which the spec says are the same thing.
+        "aud": fhir_base or FHIR_BASE,
         "code_challenge": challenge,
         "code_challenge_method": "S256",
     }
+    if ehr_launch:
+        params["launch"] = ehr_launch
 
     return f"{KEYCLOAK}/realms/{REALM}/protocol/openid-connect/auth?" + urllib.parse.urlencode(params)
 
@@ -153,6 +167,14 @@ class Handler(BaseHTTPRequestHandler):
                 f"{KEYCLOAK}/realms/{REALM}/protocol/openid-connect/logout?"
                 + urllib.parse.urlencode(params),
             )
+            self.end_headers()
+            return
+
+        if "launch" in query and "iss" in query and "code" not in query:
+            iss = query["iss"][0]
+            handle = query["launch"][0]
+            self.send_response(302)
+            self.send_header("Location", authorize_url(ehr_launch=handle, fhir_base=iss))
             self.end_headers()
             return
 
