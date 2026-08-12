@@ -202,6 +202,23 @@ have=set(d.get('capabilities',[]))
 print('all' if want.issubset(have) else 'missing: %s' % sorted(want-have))")"
 check "the implemented launch capabilities are advertised" "$got" "all"
 
+# Without this an app has no discoverable way to log anybody out. Ending the OpenMRS session alone
+# leaves the authorization server's session intact, and the next launch in that browser is granted
+# silently as whoever launched last.
+LOGOUT="$(printf '%s' "$DISCO_SMART" | python3 -c "
+import sys, json
+try: print(json.load(sys.stdin).get('end_session_endpoint',''))
+except Exception: print('')")"
+if [ -z "$LOGOUT" ]; then
+  fail "the discovery document advertises where to end a session" "no end_session_endpoint"
+else
+  pass "the discovery document advertises where to end a session"
+  case "$LOGOUT" in
+    http://localhost:*) pass "the advertised logout endpoint is browser-reachable" ;;
+    *) fail "the advertised logout endpoint is browser-reachable" "got $LOGOUT" ;;
+  esac
+fi
+
 step "The audience validator decides launches on the aud parameter"
 PKCE="code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
 REDIRECT="$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$OPENMRS/")"
@@ -510,6 +527,18 @@ try:
 except Exception:
     print('unreadable')")"
       check "the app receives the chosen patient as launch context" "$GRANTED" "$PATIENT_UUID"
+
+      # A standalone launch has to sign the clinician in so they can search. That session used to
+      # outlive the launch, leaving the browser holding a fully privileged session that no visible
+      # logout would obviously end -- on a shared workstation, the next person's session.
+      left="$(curl -s -b "$JAR" --max-time 25 "$OPENMRS/ws/rest/v1/session" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print((d.get('user') or {}).get('display') if d.get('authenticated') else 'ended')
+except Exception:
+    print('unreadable')")"
+      check "the session the launch created does not outlive it" "$left" "ended"
     fi
   else
     fail "the picker can search patients with that session" "the search returned nothing"

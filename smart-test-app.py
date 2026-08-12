@@ -39,6 +39,10 @@ DEFAULT_SCOPE = "openid fhirUser launch/patient patient/Patient.rs"
 # state -> PKCE verifier. In memory on purpose: this only has to survive one launch.
 PENDING = {}
 
+# The id_token from the last completed launch. Passing it back as id_token_hint is what lets the
+# authorization server end the session without stopping to ask "do you want to log out?".
+LAST_ID_TOKEN = {"value": None}
+
 STYLE = """
 body { font: 15px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; padding: 0 1.5rem;
        color: #161616; background: #fff; }
@@ -135,6 +139,23 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         query = urllib.parse.parse_qs(parsed.query)
 
+        if parsed.path == "/logout":
+            # RP-initiated logout. Ending the OpenMRS session alone is not enough: the authorization
+            # server keeps its own session, and the next launch in this browser would be granted
+            # silently as whoever launched last.
+            params = {"post_logout_redirect_uri": REDIRECT_URI, "client_id": CLIENT_ID}
+            if LAST_ID_TOKEN["value"]:
+                params["id_token_hint"] = LAST_ID_TOKEN["value"]
+            LAST_ID_TOKEN["value"] = None
+            self.send_response(302)
+            self.send_header(
+                "Location",
+                f"{KEYCLOAK}/realms/{REALM}/protocol/openid-connect/logout?"
+                + urllib.parse.urlencode(params),
+            )
+            self.end_headers()
+            return
+
         if parsed.path == "/launch":
             self.send_response(302)
             self.send_header("Location", authorize_url())
@@ -197,6 +218,7 @@ class Handler(BaseHTTPRequestHandler):
 
         token = granted.get("access_token", "")
         patient_id = granted.get("patient")
+        LAST_ID_TOKEN["value"] = granted.get("id_token")
 
         rows = [
             ("Granted scopes", granted.get("scope", "(none)")),
@@ -209,7 +231,37 @@ class Handler(BaseHTTPRequestHandler):
             f"<dt>{html.escape(k)}</dt><dd>{html.escape(str(v))}</dd>" for k, v in rows
         ) + "</dl>"
 
-        # The point of the whole exercise: read the patient the launch was scoped to.
+        # Whatever the launch was actually granted, read some of it. Nothing here is specific to one
+        # kind of app: the resource types come from the granted scopes, so an app scoped to
+        # observations demonstrates observations and one scoped to conditions demonstrates conditions.
+        granted_types = [
+            scope.split("/", 1)[1].split(".", 1)[0]
+            for scope in (granted.get("scope") or "").split()
+            if scope.startswith("patient/") and "/" in scope
+        ]
+        searchable = [t for t in dict.fromkeys(granted_types) if t and t != "*" and t != "Patient"]
+
+        if patient_id and searchable:
+            rows = []
+            for resource_type in searchable:
+                status, bundle = get_json(
+                    f"{FHIR_BASE}/{resource_type}?patient={patient_id}&_count=3", token
+                )
+                rows.append(
+                    (resource_type, f"{bundle.get('total', '?')} for this patient")
+                    if status == 200
+                    else (resource_type, f"HTTP {status}")
+                )
+
+            body += (
+                "<h2>What this app can read for that patient</h2><dl>"
+                + "".join(
+                    f"<dt>{html.escape(t)}</dt><dd>{html.escape(str(v))}</dd>" for t, v in rows
+                )
+                + "</dl>"
+            )
+
+        # The patient the launch was scoped to, read back with the token that was issued.
         if patient_id:
             status, resource = get_json(f"{FHIR_BASE}/Patient/{patient_id}", token)
             if status == 200:
@@ -228,7 +280,14 @@ class Handler(BaseHTTPRequestHandler):
                     f"granted for.</p><pre>{html.escape(json.dumps(resource, indent=2))}</pre>"
                 )
 
-        return page("Launch complete", body + "<p><a href='/'>Launch again</a></p>")
+        body += (
+            "<h2>When you are finished</h2>"
+            "<p>Logging out of OpenMRS does not end the session at the authorization server, so the "
+            "next launch in this browser would be granted silently as you. This ends both.</p>"
+            "<p><a class=launch href='/logout'>Log out</a> &nbsp; <a href='/'>Launch again</a></p>"
+        )
+
+        return page("Launch complete", body)
 
 
 if __name__ == "__main__":
