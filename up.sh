@@ -277,6 +277,22 @@ else
   die "smartClient not found in the openmrs realm"
 fi
 
+# The openmrs realm is imported with sslRequired=none because this stack is plain HTTP, but the
+# master realm keeps Keycloak's default of "external" and that realm serves the admin console.
+# "external" exempts clients Keycloak considers private, so it goes unnoticed on localhost and then
+# answers "HTTPS required" as soon as Keycloak sees a non-private client address: through a tunnel,
+# behind a proxy that sets X-Forwarded-For, or from another machine.
+#
+# Development only. A real deployment terminates TLS in front of Keycloak and leaves both realms
+# requiring it.
+if [ "$(kcadm get realms/master --fields sslRequired --format csv --noquotes | tr -d '\r')" = "none" ]; then
+  note "the admin console already accepts plain HTTP"
+else
+  kcadm update realms/master -s sslRequired=none >/dev/null \
+    && note "the admin console now accepts plain HTTP (development only)" \
+    || note "could not relax sslRequired on master; the admin console may answer 'HTTPS required'"
+fi
+
 # With federation configured, Keycloak reads users from the OpenMRS database and a local
 # user would only shadow them. One is created only when the provider is absent.
 if [ -f "$USERSTORE_JAR_PATH" ]; then
@@ -438,6 +454,10 @@ cat <<EOF
     Patient picker   ${OPENMRS_BASE_URL}/spa/smart/select-patient
                      served by openmrs-esm-smart-app-launch-app; run it with
                        (cd ${ESM_REPO} && npm start -- --backend $OPENMRS_BASE_URL)
+
+    Try a launch     ./smart-test-app.py   then open http://localhost:3000
+                     a minimal SMART app: launches, receives the redirect, and reads
+                     the patient it was given back from the FHIR API
 
     Verify the environment:  ./verify-env.sh
     Stop:                    ./up.sh --down

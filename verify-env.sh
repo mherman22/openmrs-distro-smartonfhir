@@ -91,6 +91,32 @@ else
   fail "the realm was imported" "no import line in the Keycloak log"
 fi
 
+step "Keycloak accepts plain HTTP"
+# Keycloak refuses HTTP per realm, and the refusal is a rendered page rather than an error status:
+# a realm left at the default "external" answers "HTTPS required" for any client it does not
+# consider private, so it looks fine from localhost and fails through a tunnel or from another
+# machine. Both realms matter here, because master serves the admin console.
+for realm in master openmrs; do
+  body="$(docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh get "realms/$realm" \
+    --fields sslRequired --format csv --noquotes 2>/dev/null | tr -d ' \r\n')"
+  case "$body" in
+    none) pass "the $realm realm accepts plain HTTP" ;;
+    "")   fail "the $realm realm accepts plain HTTP" "could not read sslRequired for $realm" ;;
+    *)    fail "the $realm realm accepts plain HTTP" \
+               "sslRequired=$body, so Keycloak answers 'HTTPS required' to non-private clients" ;;
+  esac
+done
+
+# And prove it, rather than trusting the setting: ask over HTTP and look for the refusal page.
+for probe in "/admin/master/console/" "/realms/openmrs/.well-known/openid-configuration"; do
+  page="$(curl -s -L --max-time 20 "$KC$probe" 2>/dev/null)"
+  if printf '%s' "$page" | grep -qi "HTTPS required"; then
+    fail "$probe is served over plain HTTP" "Keycloak answered with its 'HTTPS required' page"
+  else
+    pass "$probe is served over plain HTTP"
+  fi
+done
+
 step "The SMART discovery document"
 DISCO_SMART="$(curl -sL --max-time 20 "$OPENMRS/ws/fhir2/R4/.well-known/smart-configuration" 2>/dev/null)"
 DISCO="$DISCO_SMART"

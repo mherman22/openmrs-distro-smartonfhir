@@ -152,6 +152,28 @@ That serves the app shell with this module in it, and proxies API calls to the s
 to the dockerised frontend instead means rebuilding that image with an extra entry in
 `spa-assemble-config.json`, which is worth doing once the module is published.
 
+## Testing a launch by hand
+
+A launch needs an app at both ends: something to start it, and something for the authorization
+server to redirect back to. `smart-test-app.py` is the smallest thing that qualifies — it starts a
+standalone launch, receives the redirect, exchanges the code, and reads the patient it was given back
+from the FHIR API.
+
+```bash
+./smart-test-app.py          # then open http://localhost:3000 and press Launch
+```
+
+Sign in as the dev user with their own OpenMRS password, choose a patient, and the app shows the
+granted scopes, the patient in launch context, and that patient read back over FHIR with the token
+it was issued. Configure it with `OPENMRS_URL`, `KEYCLOAK_URL`, `REALM`, `CLIENT_ID`, `SCOPE`
+and `PORT`.
+
+It is a development tool. It keeps PKCE verifiers in memory, stores nothing, and reports errors as
+plain pages; none of that is what a real app should do.
+
+For the same walk unattended, the frontend module carries a Playwright spec covering it
+(`yarn test:e2e` in openmrs-esm-smart-app-launch-app), and `./verify-env.sh` walks it with curl.
+
 ## Status
 
 RefApp 3.7.1 and Keycloak 26 run together with the `smartonfhir` omod installed and
