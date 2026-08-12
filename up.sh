@@ -348,6 +348,82 @@ PROPS" || die "could not amend $RUNTIME_PROPS"
   note "openmrs healthy again"
 fi
 
+# ------------------------------------------------------------- patient picker
+
+# The frontend image bakes an import map and a routes registry at build time, so an extra
+# frontend module cannot simply be listed in spa-assemble-config.json here. Both files are
+# plain JSON served by nginx from disk, so the module is copied in and both are amended in
+# place. That is re-applied on every run, since recreating the container discards it.
+#
+# The alternative, rebuilding the frontend image, is the right answer once the module is
+# published to npm; until then this keeps the launch flow walkable in a browser.
+if [ -d "$ESM_REPO" ]; then
+  log "Installing the patient picker into the frontend"
+
+  # Read from the package rather than assumed: the bundle is named after the project, which
+  # is not necessarily the package name, and guessing produced a 404 that looked like a
+  # routing problem.
+  ESM_NAME="$(python3 -c "import json;print(json.load(open('$ESM_REPO/package.json'))['name'])")"
+  ESM_VERSION="$(python3 -c "import json;print(json.load(open('$ESM_REPO/package.json'))['version'])")"
+  ESM_BUNDLE="$(python3 -c "
+import json,os
+print(os.path.basename(json.load(open('$ESM_REPO/package.json'))['browser']))")"
+  ESM_DIR="$(printf '%s' "$ESM_NAME" | sed 's|@openmrs/|openmrs-|')-$ESM_VERSION"
+  FE_ROOT=/usr/share/nginx/html
+
+  if [ ! -f "$ESM_REPO/dist/$ESM_BUNDLE" ]; then
+    note "building the frontend module"
+    (cd "$ESM_REPO" && npm run build --silent >/dev/null 2>&1) || die "the frontend module failed to build"
+  fi
+  [ -f "$ESM_REPO/dist/$ESM_BUNDLE" ] || die "the build produced no $ESM_BUNDLE"
+
+  docker compose exec -T --user root frontend sh -c "rm -rf $FE_ROOT/$ESM_DIR && mkdir -p $FE_ROOT/$ESM_DIR"
+  docker cp "$ESM_REPO/dist/." "$(docker compose ps -q frontend):$FE_ROOT/$ESM_DIR/" >/dev/null
+
+  # routes.json is emitted next to the bundle by the build; the registry wants its contents
+  # keyed by module name.
+  ROUTES_JSON="$(python3 -c "
+import json,sys
+print(json.dumps(json.load(open('$ESM_REPO/src/routes.json'))))")"
+
+  # The frontend image has no Python, so the JSON is amended on the host: copied out,
+  # patched, copied back. Overwriting our own key makes a re-run idempotent.
+  mkdir -p "$HERE/target/frontend"
+  FE_ID="$(docker compose ps -q frontend)"
+  docker cp "$FE_ID:$FE_ROOT/importmap.json" "$HERE/target/frontend/importmap.json" >/dev/null
+  docker cp "$FE_ID:$FE_ROOT/routes.registry.json" "$HERE/target/frontend/routes.registry.json" >/dev/null
+
+  # The built routes.json, not the source one: it is what the shell would have been given
+  # had the module been assembled into the image.
+  ESM_ROUTES="$ESM_REPO/dist/routes.json"
+  [ -f "$ESM_ROUTES" ] || ESM_ROUTES="$ESM_REPO/src/routes.json"
+
+  python3 - "$HERE/target/frontend" "$ESM_NAME" "$ESM_DIR" "$ESM_ROUTES" "$ESM_BUNDLE" "$ESM_VERSION" <<'PATCH'
+import json, os, sys
+
+work, module, directory, routes_file, bundle, version = sys.argv[1:7]
+
+importmap_path = os.path.join(work, "importmap.json")
+importmap = json.load(open(importmap_path))
+importmap.setdefault("imports", {})[module] = "./%s/%s" % (directory, bundle)
+json.dump(importmap, open(importmap_path, "w"), indent=2)
+
+registry_path = os.path.join(work, "routes.registry.json")
+registry = json.load(open(registry_path))
+target = registry["modules"] if "modules" in registry else registry
+routes = json.load(open(routes_file))
+routes["version"] = version
+target[module] = routes
+json.dump(registry, open(registry_path, "w"), indent=2)
+PATCH
+
+  docker cp "$HERE/target/frontend/importmap.json" "$FE_ID:$FE_ROOT/importmap.json" >/dev/null
+  docker cp "$HERE/target/frontend/routes.registry.json" "$FE_ID:$FE_ROOT/routes.registry.json" >/dev/null
+  note "installed $ESM_NAME ($ESM_BUNDLE) at ${OPENMRS_BASE_URL}/spa/smart/select-patient"
+else
+  note "no frontend module checked out; standalone launch has no patient picker"
+fi
+
 log "Ready"
 cat <<EOF
     OpenMRS          $OPENMRS_BASE_URL

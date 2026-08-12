@@ -123,14 +123,15 @@ except Exception: print('unparseable'); raise SystemExit
 m=d.get('code_challenge_methods_supported',[])
 print('S256-only' if m==['S256'] else 'unexpected: %s' % m)")" "S256-only"
 
-# A discovery document is a contract. Advertising a flow with no patient-selection screen
-# makes an app fail in a way that looks like the app's fault.
+# A discovery document is a contract. Advertising a flow that has not been walked makes an app
+# fail in a way that looks like the app's fault. The standalone capabilities were absent until
+# the flow completed in a browser; permission-v2 stays absent until scopes are enforced.
 check "no capability is advertised that is not implemented" "$(printf '%s' "$DISCO_SMART" | python3 -c "
 import sys,json
 try: d=json.load(sys.stdin)
 except Exception: print('unparseable'); raise SystemExit
 caps=set(d.get('capabilities',[]))
-over=caps & {'launch-standalone','context-standalone-patient','permission-v2'}
+over=caps & {'permission-v2'}
 print('honest' if not over else 'overclaimed: %s' % sorted(over))")" "honest"
 
 # The keys an app is told to verify with must be fetchable from where the app runs, not only
@@ -168,9 +169,9 @@ got="$(printf '%s' "$DISCO" | python3 -c "
 import sys,json
 try: d=json.load(sys.stdin)
 except Exception: print('unparseable'); raise SystemExit
-# Only the flows that work. Standalone launch is absent on purpose until there is a
-# patient-selection screen; the overclaim check above is what keeps that honest.
-want={'launch-ehr','context-ehr-patient','context-ehr-encounter','sso-openid-connect'}
+# Only the flows that work. Standalone launch is included now that the walk below completes it.
+want={'launch-ehr','launch-standalone','context-ehr-patient','context-ehr-encounter',
+      'context-standalone-patient','sso-openid-connect'}
 have=set(d.get('capabilities',[]))
 print('all' if want.issubset(have) else 'missing: %s' % sorted(want-have))")"
 check "the implemented launch capabilities are advertised" "$got" "all"
@@ -309,6 +310,186 @@ except Exception: print('unparseable')")"
   check "and answers with a FHIR Bundle" "$got" "Bundle"
   rm -f "$BODY"
 fi
+
+FHIR_BASE="$OPENMRS/ws/fhir2/R4"
+export FHIR_BASE
+step "The patient picker is actually served"
+# The picker is a frontend module, installed into the SPA host rather than built into the image.
+# When its bundle name or registration is wrong the route still resolves and the app simply never
+# loads: the launch lands on an empty page with no error anywhere.
+IMPORTMAP="$(curl -s -L --max-time 20 "$OPENMRS/spa/importmap.json" 2>/dev/null)"
+BUNDLE_URL="$(printf '%s' "$IMPORTMAP" | python3 -c "
+import sys, json
+try:
+    imports = json.load(sys.stdin).get('imports', {})
+except Exception:
+    print(''); raise SystemExit
+print(next((v for k, v in imports.items() if 'smart-app-launch' in k), ''))")"
+
+if [ -z "$BUNDLE_URL" ]; then
+  fail "the picker is registered in the SPA import map" "no smart-app-launch entry in $OPENMRS/spa/importmap.json"
+else
+  pass "the picker is registered in the SPA import map"
+  case "$BUNDLE_URL" in
+    http*) FETCH="$BUNDLE_URL" ;;
+    /*)    FETCH="http://localhost$BUNDLE_URL" ;;
+    *)     FETCH="$OPENMRS/spa/$BUNDLE_URL" ;;
+  esac
+  code="$(curl -s -L -o /dev/null -w '%{http_code}' --max-time 20 "$FETCH" 2>/dev/null)"
+  if [ "$code" = "200" ]; then
+    pass "the registered bundle is fetchable"
+  else
+    fail "the registered bundle is fetchable" "$FETCH answered HTTP $code, so the route renders nothing"
+  fi
+fi
+
+# An unmet backend dependency stops the frontend registering the app at all, and a -SNAPSHOT
+# backend does not satisfy a plain >= range: 2.0.0-SNAPSHOT sorts below 2.0.0 under semver.
+ROUTES="$(curl -s -L --max-time 20 "$OPENMRS/spa/routes.registry.json" 2>/dev/null)"
+got="$(printf '%s' "$ROUTES" | MODULE_VERSION="$(curl -s -u "${SMART_DEV_USER:-doctor}:$DEV_PASSWORD" --max-time 20 \
+  "$OPENMRS/ws/rest/v1/module/smartonfhir?v=custom:(version)" 2>/dev/null | python3 -c "
+import sys, json
+try: print(json.load(sys.stdin).get('version',''))
+except Exception: print('')")" python3 -c "
+import sys, json, os, re
+installed = os.environ.get('MODULE_VERSION', '')
+try:
+    registry = json.load(sys.stdin)
+except Exception:
+    print('unparseable registry'); raise SystemExit
+entry = next((v for k, v in registry.items() if 'smart-app-launch' in k), None)
+if entry is None:
+    print('the picker is not in the routes registry'); raise SystemExit
+required = (entry.get('backendDependencies') or {}).get('smartonfhir')
+if not required:
+    print('no smartonfhir dependency declared'); raise SystemExit
+if not installed:
+    print('could not read the installed module version'); raise SystemExit
+# Mirror the frontend's own comparison closely enough to catch the prerelease trap.
+prerelease = '-' in installed
+plain_lower_bound = re.match(r'^>=\s*\d+\.\d+\.\d+$', required.strip())
+print('blocked' if prerelease and plain_lower_bound else 'satisfied')")"
+check "the picker's backend dependency admits the installed module version" "$got" "satisfied"
+
+step "The standalone launch completes"
+# The whole flow, driven as a browser would: authorize, sign in with the clinician's own
+# OpenMRS password, land on the picker, turn the launch token into a session, choose a patient,
+# and exchange the code. Anything short of the patient arriving in the token response leaves a
+# gap only a real app would find.
+JAR="$(mktemp)"
+AUTHORIZE="$KC/realms/openmrs/protocol/openid-connect/auth?client_id=smartClient&response_type=code&scope=openid%20launch/patient&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2F&aud=$(python3 -c "import urllib.parse,os;print(urllib.parse.quote(os.environ['FHIR_BASE']))")&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
+
+curl -s -c "$JAR" -o "$JAR.login" --max-time 25 "$AUTHORIZE" 2>/dev/null
+FORM_ACTION="$(LOGIN_FILE="$JAR.login" python3 -c "
+import re, html, os
+try:
+    m = re.search(r'action=\"([^\"]+)\"', open(os.environ['LOGIN_FILE']).read())
+    print(html.unescape(m.group(1)) if m else '')
+except Exception:
+    print('')")"
+
+if [ -z "$FORM_ACTION" ]; then
+  fail "the authorization endpoint presents a login form" "no form in the response"
+  PICKER_URL=""
+else
+  pass "the authorization endpoint presents a login form"
+  PICKER_URL="$(curl -s -b "$JAR" -c "$JAR" -o /dev/null -D - --max-time 25 \
+    --data-urlencode "username=${SMART_DEV_USER:-doctor}" --data-urlencode "password=$DEV_PASSWORD" \
+    --data-urlencode "credentialId=" "$FORM_ACTION" 2>/dev/null \
+    | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r')"
+fi
+
+case "$PICKER_URL" in
+  *"/ms/smartPatientSelection"*)
+    pass "signing in sends the browser to the module's patient-selection entry point"
+    # That entry point turns the token into a session and then redirects to the frontend route.
+    # Landing on the frontend route directly cannot work: it has no session, so the single-page
+    # application redirects to the login page and the launch token in the URL is lost.
+    SPA_HOP="$(curl -s -b "$JAR" -c "$JAR" -o /dev/null -D - --max-time 25 "$PICKER_URL" 2>/dev/null \
+      | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r')"
+    case "$SPA_HOP" in
+      *"/spa/smart/select-patient"*) pass "the entry point redirects to the picker with a session in place" ;;
+      "") fail "the entry point redirects to the picker with a session in place" "no redirect issued" ;;
+      *) fail "the entry point redirects to the picker with a session in place" "went to $SPA_HOP" ;;
+    esac
+    case "$SPA_HOP" in
+      *jsessionid*) fail "the redirect does not put the session id in the URL" "got $SPA_HOP" ;;
+      *) pass "the redirect does not put the session id in the URL" ;;
+    esac
+    ;;
+  "") fail "signing in sends the browser to the module's patient-selection entry point" "no redirect after login" ;;
+  *) fail "signing in sends the browser to the module's patient-selection entry point" "went to $PICKER_URL" ;;
+esac
+
+LAUNCH_TOKEN="$(PICKER="$PICKER_URL" python3 -c "
+import urllib.parse as u, os
+print(u.parse_qs(u.urlparse(os.environ['PICKER']).query).get('token', [''])[0])" 2>/dev/null)"
+
+if [ -z "$LAUNCH_TOKEN" ]; then
+  fail "the picker is handed a launch token" "none present in the redirect"
+else
+  ENCODED="$(TOKEN="$LAUNCH_TOKEN" python3 -c "
+import urllib.parse, os
+print(urllib.parse.quote(os.environ['TOKEN']))")"
+
+  # The entry point followed above already authenticated from the token, so an ordinary session
+  # request should now answer as the clinician. This is what the frontend relies on: it never sees
+  # the token exchange, it simply finds a session waiting.
+  who="$(curl -s -b "$JAR" -c "$JAR" --max-time 25 "$OPENMRS/ws/rest/v1/session" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    u = d.get('user') or {}
+    if not d.get('authenticated'):
+        print('anonymous')
+    elif not isinstance(u.get('roles'), list):
+        # The frontend reads user.roles without guarding; a session missing it crashes the whole app.
+        print('authenticated but no roles')
+    else:
+        print(u.get('display'))
+except Exception:
+    print('unreadable')")"
+  check "the launch token establishes a usable OpenMRS session" "$who" "${SMART_DEV_USER:-doctor}"
+
+  PATIENT_UUID="$(curl -s -b "$JAR" --max-time 25 "$OPENMRS/ws/rest/v1/patient?q=John&v=custom:(uuid,display)&limit=1" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    r = json.load(sys.stdin).get('results', [])
+    print(r[0]['uuid'] if r else '')
+except Exception:
+    print('')")"
+  if [ -n "$PATIENT_UUID" ]; then
+    pass "the picker can search patients with that session"
+
+    ACTION_URL="$(curl -s -b "$JAR" -c "$JAR" -o /dev/null -D - --max-time 25 \
+      "$OPENMRS/ms/smartLaunchOptionSelected?token=$ENCODED&patientId=$PATIENT_UUID" 2>/dev/null \
+      | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r')"
+    APP_URL="$(curl -s -b "$JAR" -c "$JAR" -o /dev/null -D - --max-time 25 "$ACTION_URL" 2>/dev/null \
+      | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r')"
+    CODE="$(APP="$APP_URL" python3 -c "
+import urllib.parse as u, os
+print(u.parse_qs(u.urlparse(os.environ['APP']).query).get('code', [''])[0])" 2>/dev/null)"
+
+    if [ -z "$CODE" ]; then
+      fail "choosing a patient returns an authorization code" "landed on $APP_URL"
+    else
+      pass "choosing a patient returns an authorization code"
+      GRANTED="$(curl -s --max-time 25 -X POST "$KC/realms/openmrs/protocol/openid-connect/token" \
+        -d client_id=smartClient -d grant_type=authorization_code -d "code=$CODE" \
+        -d "redirect_uri=http://localhost:3000/" \
+        -d "code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    print(json.load(sys.stdin).get('patient') or 'no-patient-claim')
+except Exception:
+    print('unreadable')")"
+      check "the app receives the chosen patient as launch context" "$GRANTED" "$PATIENT_UUID"
+    fi
+  else
+    fail "the picker can search patients with that session" "the search returned nothing"
+  fi
+fi
+rm -f "$JAR" "$JAR.login"
 
 step "Result"
 if [ "$FAILURES" -eq 0 ]; then
