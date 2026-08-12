@@ -152,6 +152,37 @@ That serves the app shell with this module in it, and proxies API calls to the s
 to the dockerised frontend instead means rebuilding that image with an extra entry in
 `spa-assemble-config.json`, which is worth doing once the module is published.
 
+## Registering your own app
+
+Any SMART app can launch against this stack; nothing is specific to the one that ships with it. The
+step-by-step instructions live in
+[INTEGRATING.md](https://github.com/mherman22/openmrs-module-smartonfhir/blob/2.0.x/INTEGRATING.md)
+in the module repository — admin console click-path and the `kcadm.sh` equivalent.
+
+Two things specific to this development stack:
+
+**Your client does not survive a restart.** `up.sh` recreates Keycloak and its database lives inside
+the container, so a client registered through the admin console is gone after the next `./up.sh`.
+Either register it again, or add it to `realm/openmrs-realm.json` in
+[openmrs-contrib-keycloak-smart-auth](https://github.com/openmrs/openmrs-contrib-keycloak-smart-auth)
+so it is imported every time. The second is the better answer if you are iterating for more than an
+afternoon.
+
+**Two apps side by side is the useful demonstration** — the shipped one on 3000 and something quite
+different on 3100:
+
+```bash
+./smart-test-app.py &
+
+CLIENT_ID=risk-dashboard PORT=3100 \
+  SCOPE="openid fhirUser launch/patient patient/Observation.rs patient/Condition.rs" \
+  ./smart-test-app.py &
+```
+
+Register `risk-dashboard` with redirect URI `http://localhost:3100/*` first. Both apps then get the
+same login, the same patient-selection screen and the same FHIR access, and neither required a change
+to the module.
+
 ## Testing a launch by hand
 
 A launch needs an app at both ends: something to start it, and something for the authorization
