@@ -171,6 +171,27 @@ json.dump({
 PYCFG
 note "wrote target/openmrs-config/smart-oauth2.json (issuer/audience matched to the realm)"
 
+# Which apps may be launched from a patient chart. An EHR launch names an app by id and the module
+# looks the address up here, rather than being told where to send the clinician by whoever calls it.
+# The example points at the test app on port 3000; add your own the same way.
+python3 - "$HERE/target/openmrs-config/smart-apps.json" "${SMART_TEST_APP_URL:-http://localhost:3000/}" <<'PYAPPS'
+import json, sys
+target, test_app = sys.argv[1:3]
+json.dump({
+    "apps": [
+        {
+            "id": "test-app",
+            "name": "SMART test app",
+            "description": "The bundled test app, for checking a launch end to end",
+            "clientId": "smartClient",
+            "launchUrl": test_app,
+            "launchContext": "patient",
+        }
+    ]
+}, open(target, "w"), indent=2)
+PYAPPS
+note "wrote target/openmrs-config/smart-apps.json (one app: test-app)"
+
 
 
 # ----------------------------------------------------------------- module staging

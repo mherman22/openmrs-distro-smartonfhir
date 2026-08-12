@@ -571,9 +571,26 @@ if [ -z "$EHR_PATIENT" ]; then
   fail "a patient is available to launch for" "the search returned nothing"
 else
   APP_CB="http://localhost:3000/"
+  # Named by id: the address comes from the app registry, not from this request. Passing a launchUrl
+  # used to be how this worked, which made the servlet an open redirector.
   NOTIFY="$(curl -s -b "$EJAR" -c "$EJAR" -o /dev/null -D - --max-time 25 \
-    "$OPENMRS/ms/smartEhrLaunchServlet?launchUrl=$(python3 -c "import urllib.parse;print(urllib.parse.quote('$APP_CB'))")&launchContext=patient&patientId=$EHR_PATIENT" \
+    "$OPENMRS/ms/smartEhrLaunchServlet?appId=test-app&patientId=$EHR_PATIENT" \
     2>/dev/null | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r')"
+
+  # An app this deployment never registered must not be launchable, and neither must an address
+  # supplied by the caller.
+  UNKNOWN_STATUS="$(curl -s -b "$EJAR" -o /dev/null -w '%{http_code}' --max-time 25 \
+    "$OPENMRS/ms/smartEhrLaunchServlet?appId=never-registered&patientId=$EHR_PATIENT" 2>/dev/null)"
+  check "an unregistered app cannot be launched" "$UNKNOWN_STATUS" "404"
+
+  INJECTED="$(curl -s -b "$EJAR" -o /dev/null -D - --max-time 25 \
+    "$OPENMRS/ms/smartEhrLaunchServlet?appId=test-app&patientId=$EHR_PATIENT&launchUrl=http%3A%2F%2Fevil.example.org%2F" \
+    2>/dev/null | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r')"
+  case "$INJECTED" in
+    *evil.example.org*) fail "a launch cannot be redirected to an address of the caller's choosing" \
+                             "the servlet sent the browser to $INJECTED" ;;
+    *) pass "a launch cannot be redirected to an address of the caller's choosing" ;;
+  esac
 
   # SMART requires the EHR to notify the app with iss and launch.
   case "$NOTIFY" in
