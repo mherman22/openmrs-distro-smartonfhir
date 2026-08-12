@@ -408,20 +408,38 @@ print(os.path.basename(json.load(open('$ESM_REPO/package.json'))['browser']))")"
   ESM_DIR="$(printf '%s' "$ESM_NAME" | sed 's|@openmrs/|openmrs-|')-$ESM_VERSION"
   FE_ROOT=/usr/share/nginx/html
 
+  # Rebuild when the bundle is missing or older than any source file. It used to rebuild only when
+  # missing, so editing the frontend module and running this script installed the previous build --
+  # while the routes registry was patched from source. The frontend then reported that the module
+  # "does not define a component" the registry had just told it to expect.
+  NEEDS_BUILD=0
   if [ ! -f "$ESM_REPO/dist/$ESM_BUNDLE" ]; then
+    NEEDS_BUILD=1
+  elif [ -n "$(find "$ESM_REPO/src" -newer "$ESM_REPO/dist/$ESM_BUNDLE" -print -quit 2>/dev/null)" ]; then
+    NEEDS_BUILD=1
+    note "frontend sources are newer than the last build"
+  fi
+
+  if [ "$NEEDS_BUILD" = 1 ]; then
     note "building the frontend module"
     (cd "$ESM_REPO" && npm run build --silent >/dev/null 2>&1) || die "the frontend module failed to build"
   fi
   [ -f "$ESM_REPO/dist/$ESM_BUNDLE" ] || die "the build produced no $ESM_BUNDLE"
 
-  docker compose exec -T --user root frontend sh -c "rm -rf $FE_ROOT/$ESM_DIR && mkdir -p $FE_ROOT/$ESM_DIR"
+  # Remove every previously installed copy, not just this version's directory. A copy left behind
+  # under an old version number is still reachable by a browser holding a cached import map, and it
+  # answers with a bundle that predates whatever the registry now claims.
+  docker compose exec -T --user root frontend sh -c \
+    "rm -rf $FE_ROOT/$(printf '%s' "$ESM_NAME" | sed 's|@openmrs/|openmrs-|')-* && mkdir -p $FE_ROOT/$ESM_DIR"
   docker cp "$ESM_REPO/dist/." "$(docker compose ps -q frontend):$FE_ROOT/$ESM_DIR/" >/dev/null
 
   # routes.json is emitted next to the bundle by the build; the registry wants its contents
   # keyed by module name.
+  # From dist, not src: the registry has to describe the bundle that was actually installed. Reading
+  # source here is what let the two disagree.
   ROUTES_JSON="$(python3 -c "
 import json,sys
-print(json.dumps(json.load(open('$ESM_REPO/src/routes.json'))))")"
+print(json.dumps(json.load(open('$ESM_REPO/dist/routes.json'))))")"
 
   # The frontend image has no Python, so the JSON is amended on the host: copied out,
   # patched, copied back. Overwriting our own key makes a re-run idempotent.
