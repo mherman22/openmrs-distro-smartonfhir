@@ -23,6 +23,12 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 
+# The reference application's own compose files, plus this distribution's overlay. Named
+# explicitly because compose merges docker-compose.override.yml automatically, and that
+# file adds `build:` to every service -- running a launch should not rebuild the images.
+# COMPOSE_FILE is compose's own variable, so every `docker compose` below sees both files.
+export COMPOSE_FILE="$HERE/docker-compose.yml:$HERE/docker-compose.smart.yml"
+
 # The repositories this environment assembles. All are expected as siblings of this one,
 # which is the only assumption; each can be pointed elsewhere.
 MODULE_REPO="${MODULE_REPO:-$HERE/../openmrs-module-smartonfhir}"
@@ -226,7 +232,8 @@ log "Starting the stack"
 # Noted before starting: a container that compose creates fresh already reads the current
 # mounts, and restarting one mid-first-start interrupts OpenMRS's database initialisation.
 BACKEND_ID_BEFORE="$(docker compose ps -q backend 2>/dev/null || true)"
-export REFAPP_TAG="${REFAPP_TAG:-3.7.1}"
+# The reference application's compose calls it TAG, and defaults it to qa.
+export TAG="${TAG:-${REFAPP_TAG:-3.7.1}}"
 export KEYCLOAK_TAG="${KEYCLOAK_TAG:-26.7.1}"
 export SMART_AUTH_JAR="$JAR_PATH"
 # Optional: the stack works without it, with Keycloak users maintained by hand instead.

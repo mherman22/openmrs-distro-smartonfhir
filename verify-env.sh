@@ -9,6 +9,12 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 
+# The reference application's own compose files, plus this distribution's overlay. Named
+# explicitly because compose merges docker-compose.override.yml automatically, and that
+# file adds `build:` to every service -- running a launch should not rebuild the images.
+# COMPOSE_FILE is compose's own variable, so every `docker compose` below sees both files.
+export COMPOSE_FILE="$HERE/docker-compose.yml:$HERE/docker-compose.smart.yml"
+
 OPENMRS_PORT="${OPENMRS_PORT:-80}"
 KEYCLOAK_PORT="${KEYCLOAK_PORT:-8180}"
 if [ "$OPENMRS_PORT" = "80" ]; then OPENMRS="http://localhost/openmrs"; else OPENMRS="http://localhost:${OPENMRS_PORT}/openmrs"; fi

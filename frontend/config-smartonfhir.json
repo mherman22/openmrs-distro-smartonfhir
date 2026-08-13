@@ -1,0 +1,11 @@
+{
+  "@openmrs/esm-patient-chart-app": {
+    "extensionSlots": {
+      "action-menu-patient-chart-items-slot": {
+        "add": [
+          "launch-smart-app-action"
+        ]
+      }
+    }
+  }
+}
