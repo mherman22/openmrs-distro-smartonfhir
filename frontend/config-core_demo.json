@@ -4,7 +4,8 @@
     "showUpcomingAppointments": true,
     "extensionSlots": {
       "action-menu-patient-chart-items-slot": {
-        "order": ["order-basket-action-menu"]
+        "order": ["order-basket-action-menu"],
+        "add": ["launch-smart-app-action"]
       }
     }
   },
