@@ -4,6 +4,9 @@ Brings up **OpenMRS Reference Application 3.7.1** alongside **Keycloak 26**, wit
 SMART provider installed and the SMART realm imported. This is the environment the
 2.0 revamp is developed against.
 
+**[Walk through the EHR launch](docs/ehr-launch.md)** — screenshots of the whole flow, from
+signing in to the app reading the patient over FHIR.
+
 ```bash
 cp .env.example .env       # optional; every value has a working default
 ./up.sh                    # build the provider, render the realm, start the stack

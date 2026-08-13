@@ -20,13 +20,16 @@ name: smartonfhir-dev
 services:
   frontend:
     environment:
-      # A list, comma separated. The first is the demo configuration baked into the
-      # published image; the second is ours. This is where the distribution places SMART
-      # extensions -- the frontend module declares what it offers, the distribution decides
-      # where it appears.
-      SPA_CONFIG_URLS: /openmrs/spa/config-core_demo.json,/openmrs/spa/config-smartonfhir.json
+      # Where this distribution places SMART extensions: the frontend module declares what
+      # it offers, the distribution decides where it appears. The file is the reference
+      # application's, edited here and mounted below.
+      SPA_CONFIG_URLS: /openmrs/spa/config-core_demo.json
     volumes:
-      - ./frontend/config-smartonfhir.json:/usr/share/nginx/html/config-smartonfhir.json:ro
+      # The published image bakes in the reference application's own copy of this file, so
+      # editing it in the repository changes nothing until it is mounted over that copy.
+      # Without this line the SMART extension config never reaches the browser, and the
+      # launch action simply does not appear -- with nothing logged anywhere.
+      - ./frontend/config-core_demo.json:/usr/share/nginx/html/config-core_demo.json:ro
 
   backend:
     volumes:
