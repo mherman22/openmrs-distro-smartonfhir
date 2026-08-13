@@ -125,6 +125,11 @@ else
   note "reusing the existing launch secret"
 fi
 
+# Check the template before rendering: a dangling scope reference or a misspelled mapper
+# key imports cleanly and then fails somewhere unrelated, usually at the first FHIR call.
+python3 "$HERE/realm/check-realm.py" >/dev/null \
+  || die "realm/openmrs-realm.json failed its own checks; run realm/check-realm.py"
+
 # SSL_REQUIRED=none because this stack is plain HTTP: Keycloak answers 403 on realm
 # endpoints when a realm requires SSL and the request is not HTTPS.
 SMART_LAUNCH_SECRET="$(cat "$SECRET_FILE")" \
@@ -133,7 +138,7 @@ SMART_LAUNCH_SECRET="$(cat "$SECRET_FILE")" \
   OPENMRS_JDBC_URL="${OPENMRS_JDBC_URL:-jdbc:mysql://db:3306/openmrs}" \
   OPENMRS_DB_USER="${OMRS_DB_USER:-openmrs}" \
   OPENMRS_DB_PASSWORD="${OMRS_DB_PASSWORD:-openmrs}" \
-  python3 "$SMART_AUTH_REPO/realm/render-realm.py" "$HERE/target/import/openmrs-realm.json" \
+  python3 "$HERE/realm/render-realm.py" "$HERE/target/import/openmrs-realm.json" \
   | sed 's/^/    /'
 
 # The OpenMRS module reads the same key from its own config file. Written here so

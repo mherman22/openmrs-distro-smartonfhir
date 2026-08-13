@@ -1,0 +1,406 @@
+{
+  "realm": "openmrs",
+  "enabled": true,
+  "sslRequired": "__SSL_REQUIRED__",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "accessTokenLifespan": 300,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "browserFlow": "SMART browser flow",
+  "clientScopes": [
+    {
+      "name": "profile",
+      "description": "Basic OIDC profile claims. Defined explicitly because declaring clientScopes suppresses Keycloak's built-in scopes.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "launch",
+      "description": "EHR launch: the app receives context selected by the EHR via an opaque launch handle",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Access the patient record you launched this app from"
+      },
+      "protocolMappers": [
+        {
+          "name": "smart patient context",
+          "protocol": "openid-connect",
+          "protocolMapper": "smart-context-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "smart-oidc-note.patient",
+            "claim.name": "patient",
+            "jsonType.label": "String",
+            "access.tokenResponse.claim": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "smart encounter context",
+          "protocol": "openid-connect",
+          "protocolMapper": "smart-context-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "smart-oidc-note.visit",
+            "claim.name": "encounter",
+            "jsonType.label": "String",
+            "access.tokenResponse.claim": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "launch/patient",
+      "description": "Standalone launch: the app asks for a patient to be selected",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Select a patient for this app to access"
+      },
+      "protocolMappers": [
+        {
+          "name": "smart patient context",
+          "protocol": "openid-connect",
+          "protocolMapper": "smart-context-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "smart-oidc-note.patient",
+            "claim.name": "patient",
+            "jsonType.label": "String",
+            "access.tokenResponse.claim": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "launch/encounter",
+      "description": "Standalone launch: the app asks for an encounter (OpenMRS visit) to be selected",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Select a visit for this app to access"
+      },
+      "protocolMappers": [
+        {
+          "name": "smart encounter context",
+          "protocol": "openid-connect",
+          "protocolMapper": "smart-context-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "smart-oidc-note.visit",
+            "claim.name": "encounter",
+            "jsonType.label": "String",
+            "access.tokenResponse.claim": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fhirUser",
+      "description": "Identify the authenticated user as a FHIR resource",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Know which clinician you are"
+      }
+    },
+    {
+      "name": "patient/Patient.rs",
+      "description": "SMART v2 granular scope: read and search Patient in the launch patient context",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "patient/Observation.rs",
+      "description": "SMART v2 granular scope: read and search Observation in the launch patient context",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "patient/Condition.rs",
+      "description": "SMART v2 granular scope: read and search Condition in the launch patient context",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "patient/Encounter.rs",
+      "description": "SMART v2 granular scope: read and search Encounter in the launch patient context",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "fhir-audience",
+      "description": "Names the OpenMRS FHIR server in the access token audience. Required by the resource server, which refuses tokens that do not name it. Not requested by apps: it is assigned to every client by default.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "fhir server audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "__FHIR_BASE_URL__",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "smartClient",
+      "name": "SMART app (public client)",
+      "description": "Public SMART on FHIR client. PKCE S256 is mandatory per SMART App Launch 2.x.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "__OPENMRS_BASE_URL__/*",
+        "__SMART_APP_BASE_URL__/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "fhirUser",
+        "launch",
+        "fhir-audience"
+      ],
+      "optionalClientScopes": [
+        "launch/patient",
+        "launch/encounter",
+        "patient/Patient.rs",
+        "patient/Observation.rs",
+        "patient/Condition.rs",
+        "patient/Encounter.rs",
+        "offline_access"
+      ],
+      "protocolMappers": []
+    }
+  ],
+  "authenticationFlows": [
+    {
+      "alias": "SMART browser flow",
+      "description": "Validates the SMART aud parameter, then resolves launch context. EHR launch is handled by the access authenticator; standalone launch logs in and then selects a patient.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "smart-audience-validator",
+          "authenticatorConfig": "smart-audience-config",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "SMART authentication",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "autheticatorFlow": true,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "SMART authentication",
+      "description": "Cookie SSO, EHR launch, or interactive login followed by patient selection",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "smart-access-authenticator",
+          "authenticatorConfig": "smart-access-config",
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "SMART forms",
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "autheticatorFlow": true,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "SMART forms",
+      "description": "Username/password login followed by SMART patient selection",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "smart-username-password-form",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "smart-application-authenticator",
+          "authenticatorConfig": "smart-launch-config",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "smart-audience-config",
+      "config": {
+        "smart-allowed-audiences": "__FHIR_BASE_URL__"
+      }
+    },
+    {
+      "alias": "smart-access-config",
+      "config": {
+        "smart-launch-access-url": "__OPENMRS_BASE_URL__/smartonfhir/smartAccessConfirmation?token={TOKEN}&launch={launchUuid}",
+        "smart-launch-access-secret-key": "__SMART_LAUNCH_SECRET__"
+      }
+    },
+    {
+      "alias": "smart-launch-config",
+      "config": {
+        "smart-patient-selection-url": "__OPENMRS_BASE_URL__/ms/smartPatientSelection?token={TOKEN}",
+        "smart-launch-secret-key": "__SMART_LAUNCH_SECRET__",
+        "smart-launch-supported-params": "patient encounter"
+      }
+    }
+  ],
+  "requiredActions": [
+    {
+      "alias": "VERIFY_PROFILE",
+      "name": "Verify Profile",
+      "providerId": "VERIFY_PROFILE",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 90,
+      "config": {}
+    }
+  ],
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "name": "openmrs-users",
+        "providerId": "openmrs-authentication-provider",
+        "subComponents": {},
+        "config": {
+          "JDBC URL": [
+            "__OPENMRS_JDBC_URL__"
+          ],
+          "Username": [
+            "__OPENMRS_DB_USER__"
+          ],
+          "Password": [
+            "__OPENMRS_DB_PASSWORD__"
+          ],
+          "enabled": [
+            "true"
+          ],
+          "cachePolicy": [
+            "NO_CACHE"
+          ]
+        }
+      }
+    ]
+  },
+  "defaultDefaultClientScopes": [
+    "profile",
+    "fhir-audience"
+  ],
+  "defaultOptionalClientScopes": [
+    "launch",
+    "launch/patient",
+    "launch/encounter",
+    "fhirUser",
+    "patient/Patient.rs",
+    "patient/Observation.rs",
+    "patient/Condition.rs",
+    "patient/Encounter.rs",
+    "offline_access"
+  ]
+}
