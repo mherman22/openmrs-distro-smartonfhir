@@ -78,69 +78,49 @@ Two details in that screenshot are deliberate:
 
 ## 5. What happens when Launch is clicked
 
-Nothing to screenshot: the authorization server never shows the clinician a page. That silence is the
-feature — an EHR launch that stopped for a login form would defeat the point — but it also means the
-interesting part is the redirect chain, recorded in [`launch-redirects.txt`](launch-redirects.txt) and
-walked through here. Credentials in it are redacted; the shape is real.
+Nothing appears on screen, which is the point: an EHR launch that stopped for a login form would defeat
+its own purpose. Underneath, the browser is passed between three parties in about a second.
 
-**One — the module issues a launch handle.**
+```mermaid
+sequenceDiagram
+    autonumber
+    participant O as OpenMRS
+    participant A as SMART app
+    participant K as Keycloak
 
+    O->>O: Issues a one-time handle for<br/>doctor + Betty Williams
+    O-->>A: Opens the app with iss + launch
+    A->>K: Asks to be authorised (PKCE, aud)
+    K-->>O: "Who is this?" — return with {APP_TOKEN}
+    O-->>K: Signed token: "doctor, looking at Betty"
+    K-->>A: Authorisation code
 ```
+
+| Step | What it means |
+|---|---|
+| 1 | The module writes down who is launching and for which patient, then issues an opaque handle. Not the patient's id: that would be guessable and would collide between two launches for the same patient. |
+| 2 | The app is told only *which* FHIR server and *that* a launch exists. Nothing about the patient. |
+| 3 | A standard OAuth2 authorisation request, carrying the handle. |
+| 4 | Instead of a login form, Keycloak sends the browser back into OpenMRS with a blank to fill in. |
+| 5 | The request arrives with the OpenMRS session cookie, so the module knows it is `doctor`. It signs that fact, plus the patient, with the secret both sides share. Keycloak verifies the signature, not the session. |
+| 6 | The app receives a code and trades it for a token. |
+
+<details>
+<summary>The raw redirect trace</summary>
+
+Recorded during this walkthrough into [`launch-redirects.txt`](launch-redirects.txt); credentials
+redacted, shape intact. Each `302` says "go here next".
+
+```http
 302 /openmrs/ms/smartEhrLaunchServlet?appId=test-app&patientId=c3ab5d9b-…
+302 http://localhost:3000/?iss=…%2Fws%2Ffhir2%2FR4&launch=<handle>
+302 …/openid-connect/auth?client_id=smartClient&response_type=code&code_challenge_method=S256&launch=<handle>
+302 /openmrs/smartonfhir/smartAccessConfirmation?token=…%26app-token%3D%7BAPP_TOKEN%7D&launch=<handle>
+302 …/realms/openmrs/login-actions/authenticate?session_code=…&app-token=<signed token>
+200 http://localhost:3000/?state=…&code=<authorisation code>
 ```
 
-The chart asks the module to start a launch for an app id and a patient. The module issues an opaque
-256-bit handle, single-use and bound to this clinician. It is deliberately *not* the patient's uuid:
-that would be guessable, would disclose the context it exists to hide, and would collide when two
-launches ran for the same patient.
-
-**Two — the app is notified.**
-
-```
-302 http://localhost:3000/?iss=…%2Fws%2Ffhir2%2FR4&launch=<launch handle>
-```
-
-The app receives only `iss` (which FHIR server) and `launch` (the opaque handle). It learns nothing
-about the patient yet.
-
-**Three — the app starts the OAuth2 flow.**
-
-```
-302 …/realms/openmrs/protocol/openid-connect/auth?client_id=smartClient&response_type=code
-    &scope=launch+openid+fhirUser+patient%2FPatient.rs&aud=…%2Fws%2Ffhir2%2FR4
-    &code_challenge=<PKCE challenge>&code_challenge_method=S256&launch=<launch handle>
-```
-
-Everything SMART 2.x requires is visible here: `response_type=code` only, PKCE with `S256`, an `aud`
-naming the FHIR server the app intends to read, and the `launch` handle it was given.
-
-**Four — the authorization server asks the EHR who this is.**
-
-```
-302 /openmrs/smartonfhir/smartAccessConfirmation?token=…%3Fsession_code%3D…
-    %26app-token%3D%7BAPP_TOKEN%7D&launch=<launch handle>
-```
-
-Keycloak bounces back into OpenMRS, handing it a URL with a literal `{APP_TOKEN}` placeholder — a slot
-for the EHR to fill.
-
-**Five — the EHR fills the slot.**
-
-```
-302 …/realms/openmrs/login-actions/authenticate?session_code=…&app-token=<signed launch token>
-```
-
-The module signs a short-lived token naming the clinician and the patient, using the secret it shares
-with the authorization server, and puts it where the placeholder was. This is the step that carries
-the OpenMRS identity across without a second login.
-
-**Six — the app gets its authorization code.**
-
-```
-200 http://localhost:3000/?state=<state>&iss=…%2Frealms%2Fopenmrs&code=<authorization code>
-```
-
-The app exchanges that code, with its PKCE verifier, for an access token.
+</details>
 
 ## 6. The app has the patient
 
