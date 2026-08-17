@@ -26,7 +26,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # lives in the plugin repository, which this reaches into the same way up.sh does --
 # the integrator knows about the parts, never the reverse.
 SMART_AUTH_REPO="${SMART_AUTH_REPO:-$HERE/../openmrs-contrib-keycloak-smart-auth}"
-JAR="$SMART_AUTH_REPO/openmrs-keycloak-smart-auth/target/openmrs-keycloak-smart-auth-1.0.0-SNAPSHOT.jar"
+JAR="$SMART_AUTH_REPO/keycloak-smart-auth/target/keycloak-smart-auth-1.0.0-SNAPSHOT.jar"
 WORK="$(mktemp -d)"
 FAILURES=0
 

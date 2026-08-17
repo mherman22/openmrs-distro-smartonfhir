@@ -64,7 +64,7 @@ services:
       - "${KEYCLOAK_PORT:-8180}:8080"
     volumes:
       # Built by up.sh from the sibling openmrs-contrib-keycloak-smart-auth checkout.
-      - ${SMART_AUTH_JAR:-../openmrs-contrib-keycloak-smart-auth/openmrs-keycloak-smart-auth/target/openmrs-keycloak-smart-auth-1.0.0-SNAPSHOT.jar}:/opt/keycloak/providers/openmrs-smart-auth.jar:ro
+      - ${SMART_AUTH_JAR:-../openmrs-contrib-keycloak-smart-auth/keycloak-smart-auth/target/keycloak-smart-auth-1.0.0-SNAPSHOT.jar}:/opt/keycloak/providers/openmrs-smart-auth.jar:ro
       # Lets Keycloak authenticate against the OpenMRS users table, so clinicians use the
       # credentials they already have. Optional: without it, Keycloak users must be created
       # and kept in step by hand.
