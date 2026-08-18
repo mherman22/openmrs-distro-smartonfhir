@@ -39,9 +39,23 @@ while. Subsequent runs are fast.
   | Repository | Variable | What it contributes |
   |---|---|---|
   | `openmrs-module-smartonfhir` | `MODULE_REPO` | the OpenMRS module |
-  | `openmrs-contrib-keycloak-smart-auth` | `SMART_AUTH_REPO` | Keycloak SMART launch SPI, and the realm |
+  | `openmrs-contrib-keycloak-smart-auth` | `SMART_AUTH_REPO` | Keycloak's SMART launch SPI |
   | `openmrs-contrib-keycloak-auth` | `USERSTORE_REPO` | Keycloak user federation against OpenMRS |
   | `openmrs-esm-smart-app-launch-app` | `ESM_REPO` | the patient-selection screen |
+
+  The realm is not in any of them: it names this environment's URLs and holds a generated
+  secret, so it lives here, in `realm/`.
+
+  From an empty directory, that is:
+
+  ```bash
+  for repo in openmrs-distro-smartonfhir openmrs-module-smartonfhir \
+              openmrs-contrib-keycloak-smart-auth openmrs-contrib-keycloak-auth \
+              openmrs-esm-smart-app-launch-app; do
+    git clone https://github.com/mherman22/$repo.git
+  done
+  cd openmrs-distro-smartonfhir && ./up.sh
+  ```
 
   Only the module and the SMART SPI are required. Without the federation provider, Keycloak
   users are created and maintained by hand; without the ESM, standalone launch has no
@@ -157,10 +171,11 @@ to the dockerised frontend instead means rebuilding that image with an extra ent
 
 ## Registering your own app
 
-Any SMART app can launch against this stack; nothing is specific to the one that ships with it. The
-step-by-step instructions live in
-[INTEGRATING.md](https://github.com/mherman22/openmrs-module-smartonfhir/blob/2.0.x/INTEGRATING.md)
-in the module repository — admin console click-path and the `kcadm.sh` equivalent.
+Any SMART app can launch against this stack; nothing is specific to the one that ships with it. Two
+things are needed: a Keycloak client for the app, and an entry in the module's app registry — see
+[`config/smart-apps.json`](https://github.com/mherman22/openmrs-module-smartonfhir#3-configsmart-appsjson--the-launchable-apps)
+in the module's README. `up.sh` writes that file, so add your app there rather than editing the
+generated copy under `target/`.
 
 Two things specific to this development stack:
 
