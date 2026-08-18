@@ -197,11 +197,22 @@ json.dump({
             "clientId": "smartClient",
             "launchUrl": test_app,
             "launchContext": "patient",
-        }
+        },
+        # The same app registered for encounter context, so an EHR launch that names a visit can be
+        # walked. The EHR supplies the visit, which is what separates this from a standalone launch
+        # asking for launch/encounter -- that one needs a visit-selection screen and is refused with 501.
+        {
+            "id": "encounter-app",
+            "name": "SMART test app (encounter context)",
+            "description": "The bundled test app, launched with encounter rather than patient context",
+            "clientId": "smartClient",
+            "launchUrl": test_app,
+            "launchContext": "encounter",
+        },
     ]
 }, open(target, "w"), indent=2)
 PYAPPS
-note "wrote target/openmrs-config/smart-apps.json (one app: test-app)"
+note "wrote target/openmrs-config/smart-apps.json (test-app, encounter-app)"
 
 
 

@@ -274,21 +274,21 @@
     },
     {
       "alias": "SMART authentication",
-      "description": "Cookie SSO, EHR launch, or interactive login followed by patient selection",
+      "description": "EHR launch, then cookie SSO, then interactive login with patient selection. The launch authenticator precedes auth-cookie so every launch establishes fresh context; order comes from priority, not array position.",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
       "authenticationExecutions": [
         {
-          "authenticator": "auth-cookie",
+          "authenticator": "smart-access-authenticator",
+          "authenticatorConfig": "smart-access-config",
           "requirement": "ALTERNATIVE",
           "priority": 10,
           "autheticatorFlow": false,
           "userSetupAllowed": false
         },
         {
-          "authenticator": "smart-access-authenticator",
-          "authenticatorConfig": "smart-access-config",
+          "authenticator": "auth-cookie",
           "requirement": "ALTERNATIVE",
           "priority": 20,
           "autheticatorFlow": false,

@@ -649,6 +649,65 @@ except Exception: print('unreadable')")"
     fi
   fi
 fi
+
+step "The EHR launch establishes encounter context"
+# context-ehr-encounter is advertised, so it has to be walked like every other claimed capability. An
+# EHR launch differs from a standalone one here: the EHR already knows the visit and passes it, so
+# nothing has to be chosen. A standalone launch asking for launch/encounter is refused with 501, which
+# is why context-standalone-encounter is not advertised and is not checked here.
+VISIT_UUID="$(curl -s -b "$EJAR" --max-time 25 \
+  "$OPENMRS/ws/rest/v1/visit?includeInactive=true&limit=1&v=custom:(uuid,patient:(uuid))" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    v = json.load(sys.stdin)['results'][0]
+    print(v['uuid'], v['patient']['uuid'])
+except Exception: print('')")"
+VISIT_ID="${VISIT_UUID%% *}"
+VISIT_PATIENT="${VISIT_UUID##* }"
+
+if [ -z "$VISIT_ID" ]; then
+  fail "a visit is available to launch for" "no visit in the database"
+else
+  ENC_NOTIFY="$(curl -s -b "$EJAR" -c "$EJAR" -o /dev/null -D - --max-time 25 \
+    "$OPENMRS/ms/smartEhrLaunchServlet?appId=encounter-app&patientId=$VISIT_PATIENT&visitId=$VISIT_ID" \
+    2>/dev/null | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r')"
+  ENC_HANDLE="$(N="$ENC_NOTIFY" python3 -c "
+import urllib.parse as u, os
+print(u.parse_qs(u.urlparse(os.environ['N']).query).get('launch', [''])[0])" 2>/dev/null)"
+
+  if [ -z "$ENC_HANDLE" ]; then
+    fail "an encounter launch is notified with a handle" "got ${ENC_NOTIFY:-nothing}"
+  else
+    pass "an encounter launch is notified with a handle"
+
+    ENC_AUTHZ="$KC/realms/openmrs/protocol/openid-connect/auth?client_id=smartClient&response_type=code\
+&scope=openid%20launch%20launch%2Fencounter&redirect_uri=$(python3 -c "import urllib.parse;print(urllib.parse.quote('$APP_CB'))")\
+&aud=$(I="$ISS" python3 -c "import urllib.parse,os;print(urllib.parse.quote(os.environ['I']))")\
+&launch=$(H="$ENC_HANDLE" python3 -c "import urllib.parse,os;print(urllib.parse.quote(os.environ['H']))")\
+&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
+    ENC_BACK="$(curl -s -b "$EJAR" -c "$EJAR" -o /dev/null -D - -L --max-redirs 10 --max-time 40 "$ENC_AUTHZ" 2>/dev/null \
+      | grep -i '^location:' | sed 's/^[Ll]ocation: *//' | tr -d '\r' | grep "^$APP_CB" | tail -1)"
+    ENC_CODE="$(A="$ENC_BACK" python3 -c "
+import urllib.parse as u, os
+print(u.parse_qs(u.urlparse(os.environ['A']).query).get('code', [''])[0])" 2>/dev/null)"
+
+    if [ -z "$ENC_CODE" ]; then
+      fail "an encounter launch reaches the app with an authorization code" "ended at ${ENC_BACK:-nowhere}"
+    else
+      pass "an encounter launch reaches the app with an authorization code"
+      # SMART puts launch context in the token response body, not only in the access token, so this
+      # reads it off the response the way a real client would.
+      ENC_GRANTED="$(curl -s --max-time 25 -X POST "$KC/realms/openmrs/protocol/openid-connect/token" \
+        -d client_id=smartClient -d grant_type=authorization_code -d "code=$ENC_CODE" \
+        -d "redirect_uri=$APP_CB" \
+        -d "code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" 2>/dev/null | python3 -c "
+import sys, json
+try: print(json.load(sys.stdin).get('encounter') or 'no-encounter-claim')
+except Exception: print('unreadable')")"
+      check "the app receives the encounter the EHR launched for" "$ENC_GRANTED" "$VISIT_ID"
+    fi
+  fi
+fi
 rm -f "$EJAR"
 
 step "Result"
