@@ -184,35 +184,24 @@ note "wrote target/openmrs-config/smart-oauth2.json (issuer/audience matched to 
 
 # Which apps may be launched from a patient chart. An EHR launch names an app by id and the module
 # looks the address up here, rather than being told where to send the clinician by whoever calls it.
-# The example points at the test app on port 3000; add your own the same way.
-python3 - "$HERE/target/openmrs-config/smart-apps.json" "${SMART_TEST_APP_URL:-http://localhost:3000/}" <<'PYAPPS'
+# One app is registered: the demo app in smart-app/. Add your own the same way.
+python3 - "$HERE/target/openmrs-config/smart-apps.json" "${SMART_APP_URL:-http://localhost:3000/launch.html}" <<'PYAPPS'
 import json, sys
-target, test_app = sys.argv[1:3]
+target, app_url = sys.argv[1:3]
 json.dump({
     "apps": [
         {
-            "id": "test-app",
-            "name": "SMART test app",
-            "description": "The bundled test app, for checking a launch end to end",
+            "id": "vitals-review",
+            "name": "Vitals Review",
+            "description": "Trends, derived BMI, and reference-range flagging for the launched patient",
             "clientId": "smartClient",
-            "launchUrl": test_app,
+            "launchUrl": app_url,
             "launchContext": "patient",
-        },
-        # The same app registered for encounter context, so an EHR launch that names a visit can be
-        # walked. The EHR supplies the visit, which is what separates this from a standalone launch
-        # asking for launch/encounter -- that one needs a visit-selection screen and is refused with 501.
-        {
-            "id": "encounter-app",
-            "name": "SMART test app (encounter context)",
-            "description": "The bundled test app, launched with encounter rather than patient context",
-            "clientId": "smartClient",
-            "launchUrl": test_app,
-            "launchContext": "encounter",
-        },
+        }
     ]
 }, open(target, "w"), indent=2)
 PYAPPS
-note "wrote target/openmrs-config/smart-apps.json (test-app, encounter-app)"
+note "wrote target/openmrs-config/smart-apps.json (one app: vitals-review)"
 
 
 
@@ -517,9 +506,11 @@ cat <<EOF
                      served by openmrs-esm-smart-app-launch-app; run it with
                        (cd ${ESM_REPO} && npm start -- --backend $OPENMRS_BASE_URL)
 
-    Try a launch     ./smart-test-app.py   then open http://localhost:3000
-                     a minimal SMART app: launches, receives the redirect, and reads
-                     the patient it was given back from the FHIR API
+    The SMART app    (cd smart-app && npm install && npm start)   serves on http://localhost:3000
+                     Reads the launched patient's vitals: trends every series, derives a BMI
+                     the server does not store, and reads each value against its reference
+                     range. Launch it from a patient chart rather than opening it directly --
+                     without a launch it has no patient and nothing to show.
 
     Verify the environment:  ./verify-env.sh
     Stop:                    ./up.sh --down
