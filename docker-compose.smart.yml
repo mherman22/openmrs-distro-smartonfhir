@@ -38,6 +38,15 @@ services:
       - ${SMARTONFHIR_OMOD:-../openmrs-module-smartonfhir/omod/target/smartonfhir-2.0.0-SNAPSHOT.omod}:/openmrs/distribution/openmrs_modules/smartonfhir.omod:ro
 
   frontend:
+    # Built rather than pulled, because the app shell has to be assembled with the SMART launch module in
+    # it: which modules exist is decided when the shell is built, and where they appear is decided by
+    # config-core_demo.json at runtime.
+    build:
+      context: ./frontend
+      additional_contexts:
+        # The frontend module's own checkout. Passed as a build context because a Dockerfile cannot read
+        # outside its own, and packing it here avoids both publishing it and committing a tarball.
+        esm: ${ESM_REPO:-../openmrs-esm-smart-app-launch-app}
     environment:
       # Where this distribution places SMART extensions: the frontend module declares what it offers,
       # the distribution decides where it appears.

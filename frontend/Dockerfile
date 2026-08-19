@@ -1,4 +1,6 @@
-# syntax=docker/dockerfile:1.3
+# syntax=docker/dockerfile:1.4
+# 1.4 rather than 1.3: named build contexts, which this file uses to pack the SMART launch
+# frontend module from its own checkout, were added in 1.4.
 #--------------------------------------------
 # Dev Stage - Assembles and Builds Frontend
 #--------------------------------------------
@@ -11,6 +13,16 @@ WORKDIR /app
 
 COPY spa-assemble-config.json .
 COPY spa-build-config.json .
+
+# The SMART launch frontend module, packed from its own checkout rather than fetched from a registry.
+#
+# It is not published, and the @openmrs scope is not ours to publish under. `openmrs assemble` resolves a
+# `file:` spec like any other npm spec -- measured, not assumed -- so packing it here is enough to put it
+# in the import map and the routes registry alongside every other frontend module. Publishing would
+# replace these three lines with a version number and nothing else.
+COPY --from=esm . /esm
+RUN cd /esm && npm install --no-audit --no-fund && npm run build \
+    && npm pack --pack-destination /app && mv /app/uwdigi-esm-smart-app-launch-app-*.tgz /app/esm-smart-app-launch.tgz
 
 ARG CACHE_BUST
 RUN npx --legacy-peer-deps openmrs@${APP_SHELL_VERSION:-10.0.0} assemble --manifest --mode config --config spa-assemble-config.json --target ./spa

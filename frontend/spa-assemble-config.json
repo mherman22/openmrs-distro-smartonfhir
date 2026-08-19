@@ -45,6 +45,7 @@
     "@openmrs/esm-fast-data-entry-app": "1.5.0",
     "@openmrs/esm-stock-management-app": "3.2.1",
     "@openmrs/esm-billing-app": "1.3.1",
-    "@openmrs/esm-form-builder-app": "3.5.1"
+    "@openmrs/esm-form-builder-app": "3.5.1",
+    "@uwdigi/esm-smart-app-launch-app": "file:./esm-smart-app-launch.tgz"
   }
 }
