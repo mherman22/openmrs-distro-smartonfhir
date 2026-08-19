@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "id": "vitals-review",
+      "name": "Vitals Review",
+      "description": "Trends, derived BMI, and reference-range flagging for the launched patient",
+      "clientId": "smartClient",
+      "launchUrl": "http://localhost:3000/launch.html",
+      "launchContext": "patient"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "realm": "openmrs",
   "enabled": true,
-  "sslRequired": "__SSL_REQUIRED__",
+  "sslRequired": "${SSL_REQUIRED}",
   "registrationAllowed": false,
   "loginWithEmailAllowed": false,
   "accessTokenLifespan": 300,
@@ -197,7 +197,7 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.custom.audience": "__FHIR_BASE_URL__",
+            "included.custom.audience": "${FHIR_BASE_URL}",
             "access.token.claim": "true",
             "id.token.claim": "false",
             "introspection.token.claim": "true"
@@ -219,8 +219,8 @@
       "serviceAccountsEnabled": false,
       "protocol": "openid-connect",
       "redirectUris": [
-        "__OPENMRS_BASE_URL__/*",
-        "__SMART_APP_BASE_URL__/*"
+        "${OPENMRS_BASE_URL}/*",
+        "${SMART_APP_BASE_URL}/*"
       ],
       "webOrigins": [
         "+"
@@ -332,21 +332,21 @@
     {
       "alias": "smart-audience-config",
       "config": {
-        "smart-allowed-audiences": "__FHIR_BASE_URL__"
+        "smart-allowed-audiences": "${FHIR_BASE_URL}"
       }
     },
     {
       "alias": "smart-access-config",
       "config": {
-        "smart-launch-access-url": "__OPENMRS_BASE_URL__/smartonfhir/smartAccessConfirmation?token={TOKEN}&launch={launchUuid}",
-        "smart-launch-access-secret-key": "__SMART_LAUNCH_SECRET__"
+        "smart-launch-access-url": "${OPENMRS_BASE_URL}/smartonfhir/smartAccessConfirmation?token={TOKEN}&launch={launchUuid}",
+        "smart-launch-access-secret-key": "${SMART_LAUNCH_SECRET}"
       }
     },
     {
       "alias": "smart-launch-config",
       "config": {
-        "smart-patient-selection-url": "__OPENMRS_BASE_URL__/ms/smartPatientSelection?token={TOKEN}",
-        "smart-launch-secret-key": "__SMART_LAUNCH_SECRET__",
+        "smart-patient-selection-url": "${OPENMRS_BASE_URL}/ms/smartPatientSelection?token={TOKEN}",
+        "smart-launch-secret-key": "${SMART_LAUNCH_SECRET}",
         "smart-launch-supported-params": "patient encounter"
       }
     }
@@ -370,13 +370,13 @@
         "subComponents": {},
         "config": {
           "JDBC URL": [
-            "__OPENMRS_JDBC_URL__"
+            "${OPENMRS_JDBC_URL}"
           ],
           "Username": [
-            "__OPENMRS_DB_USER__"
+            "${OPENMRS_DB_USER}"
           ],
           "Password": [
-            "__OPENMRS_DB_PASSWORD__"
+            "${OPENMRS_DB_PASSWORD}"
           ],
           "enabled": [
             "true"
