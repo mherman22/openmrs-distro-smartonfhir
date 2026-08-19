@@ -85,7 +85,11 @@ services:
       # Keycloak state is deliberately not persisted: the realm is declarative and re-imported on every
       # start, so a persisted database would only let a container drift from the committed realm.
     depends_on:
-      db:
+      # Not just the database: the user federation provider validates its Hibernate mappings against the
+      # OpenMRS schema as Keycloak starts, and on a first run that schema does not exist until OpenMRS
+      # has installed it. Waiting only for the database gave "Schema validation: missing table [person]"
+      # and a Keycloak that never came up.
+      backend:
         condition: service_healthy
     healthcheck:
       # start-dev serves the management endpoints on 9000.
