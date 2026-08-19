@@ -144,7 +144,23 @@
         "include.in.token.scope": "true",
         "display.on.consent.screen": "true",
         "consent.screen.text": "Know which clinician you are"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "smart fhirUser context",
+          "protocol": "openid-connect",
+          "protocolMapper": "smart-context-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "smart-oidc-note.fhirUser",
+            "claim.name": "fhirUser",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "access.tokenResponse.claim": "false"
+          }
+        }
+      ]
     },
     {
       "name": "patient/Patient.rs",
