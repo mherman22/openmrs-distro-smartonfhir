@@ -1,155 +1,107 @@
-# The EHR launch, step by step
+# An EHR launch, step by step
 
-A clinician looking at a patient's chart opens a third-party app, and that app comes up already
-showing the same patient — without a second sign-in and without anyone typing an identifier. This is
-SMART App Launch's *EHR launch*, and this page walks the whole thing with screenshots from a running
-stack.
+A clinician working in a patient's chart opens a SMART application, and it comes up already holding that
+patient's record — no second sign-in, nothing typed. This is that flow, photographed against this stack.
 
-Every screenshot here was taken by driving the flow in a real browser. To retake them, bring the
-stack up, start the bundled test app, and run the capture script:
+Every screenshot below was taken by `capture-walkthrough.spec.ts` in
+[openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app), which
+asserts at each step before it photographs. A walkthrough illustrated with pictures of a broken flow is
+worse than no walkthrough.
 
-```bash
-./up.sh
-./smart-test-app.py &
-cd ../openmrs-esm-smart-app-launch-app
-npx playwright test --config e2e/playwright.config.ts capture-walkthrough
-```
+## 1 · Sign in to OpenMRS
 
-The script asserts at every step, so if the flow is broken the screenshots are never written.
-
-## 1. Sign in to OpenMRS
-
-Nothing SMART-specific yet. A clinician signs in with their ordinary OpenMRS credentials.
-
-![The OpenMRS login page](images/01-login.png)
-
-The username comes first, then the password on a second step.
+![The OpenMRS login screen](images/01-login.png)
 
 ![Entering the password](images/02-password.png)
 
-Worth knowing, because it trips up automated walkthroughs: **the app shell will not render any route
-until a login location is chosen.** A session alone is not enough — without a session location the
-frontend shows this picker instead of whatever you asked for.
+An ordinary OpenMRS login. Worth noticing what does *not* happen here: nothing contacts Keycloak. At this
+point the browser holds one cookie, `JSESSIONID`, and no Keycloak session exists at all. That matters
+later.
 
 ![Choosing a login location](images/03-location.png)
 
-Those credentials are checked against the **OpenMRS user table**, not against a copy inside Keycloak.
-The `openmrs-contrib-keycloak-auth` provider federates the same users to the authorization server, so
-there is one set of credentials and one place to disable an account.
+## 2 · Open a patient's chart
 
-## 2. Open a patient's chart
+![The patient chart](images/04-patient-chart.png)
 
-The launch starts from a patient the clinician is already looking at — here Betty Williams. That
-context is the whole point: the app is going to be handed *this* patient, not asked which one to open.
+The chart shows this patient's vitals as OpenMRS records them: blood pressure 151/81, pulse 54, oxygen
+saturation 88.1%, and a BMI of 21.4. Keep those numbers in mind.
 
-![A patient chart](images/04-patient-chart.png)
-
-## 3. Find the launch action
-
-Open the **Actions** menu on the patient banner. **Launch an app** sits at the bottom, alongside the
-chart's own actions.
+## 3 · Launch an app
 
 ![The Actions menu, with Launch an app](images/05-actions-menu.png)
 
-That entry is an extension contributed by the `openmrs-esm-smart-app-launch-app` frontend module into
-the `patient-actions-slot`, which `esm-patient-banner-app` renders. It is not part of the patient
-chart itself.
-
-> **On configuring where it appears.** Slot placement is normally a distribution decision, made in
-> `frontend/config-core_demo.json`. Be careful which slot you name: this version of the reference
-> application renders only `patient-actions-slot` and `patient-search-actions-slot`, and configuration
-> naming a slot nobody renders is discarded in silence — the action simply never appears, with nothing
-> logged. `action-menu-patient-chart-items-slot` is one such name; the reference application's own
-> demo config references it too, and that line is equally dead.
-
-## 4. Choose the app
-
-The dialog lists the apps this deployment has registered, each with a **Launch** button.
+**Launch an app** comes from the frontend module, placed in the chart's action menu by
+`frontend/config-core_demo.json`. The apps it offers come from the server — `backend/smart-apps.json` —
+not from the browser, so a deployment decides what may be launched and a page cannot ask for more.
 
 ![The app picker](images/06-app-picker.png)
 
-Two details in that screenshot are deliberate:
+## 4 · The app opens, already holding the patient
 
-- **"You will not be asked to sign in again."** The clinician has already authenticated to OpenMRS,
-  and the launch carries that identity across to the authorization server.
-- **The list comes from `config/smart-apps.json`.** An app that is not registered cannot be launched
-  at all. The launch endpoint is asked for an app by id and looks the address up; it used to take the
-  address from a request parameter, which made it an open redirector for single-use launch handles.
+![Vitals Review, showing the launched patient](images/07-app-received-the-patient.png)
 
-## 5. What happens when Launch is clicked
+No login screen appeared. The application knows which patient to show, and it did not ask.
 
-Nothing appears on screen, which is the point: an EHR launch that stopped for a login form would defeat
-its own purpose. Underneath, the browser is passed between three parties in about a second.
+Look at what it is doing. It is not displaying the record back:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant O as OpenMRS
-    participant A as SMART app
-    participant K as Keycloak
+- **four of six latest vitals are outside their reference range**, named, with blood pressure staged the
+  way the 2017 ACC/AHA guideline stages it — 151 systolic is stage 2, 81 diastolic is stage 1
+- **two vitals are shown without a verdict**, because weight and height have no adult reference range and
+  saying nothing is better than implying one
+- **the body mass index is derived.** OpenMRS stores height and weight and no BMI, so 21.4 was computed
+  by the application from paired measurements taken on the same day
 
-    O->>O: Issues a one-time handle for<br/>doctor + Betty Williams
-    O-->>A: Opens the app with iss + launch
-    A->>K: Asks to be authorised (PKCE, aud)
-    K-->>O: "Who is this?" — return with {APP_TOKEN}
-    O-->>K: Signed token: "doctor, looking at Betty"
-    K-->>A: Authorisation code
+![Trends and derived values](images/08-derived-values.png)
+
+Those numbers agree with the chart in step 2 — same pressures, same pulse, same saturation, same BMI —
+which is the point: two independent readings of one record.
+
+## What happened on the wire
+
+Recorded during this walkthrough into [`launch-redirects.txt`](launch-redirects.txt), with credentials
+redacted and the shape kept:
+
+```
+302  /openmrs/ms/smartEhrLaunchServlet?appId=vitals-review&patientId=…
+200  localhost:3000/launch.html?iss=…&launch=<launch handle>
+302  keycloak /protocol/openid-connect/auth?response_type=code&client_id=smartClient&…
+302  /openmrs/smartonfhir/smartAccessConfirmation?token=…&launch=<launch handle>
+302  keycloak /login-actions/authenticate?…&app-token=<signed launch token>
+200  localhost:3000/index.html?state=<state>&code=<authorization code>
 ```
 
-| Step | What it means |
-|---|---|
-| 1 | The module writes down who is launching and for which patient, then issues an opaque handle. Not the patient's id: that would be guessable and would collide between two launches for the same patient. |
-| 2 | The app is told only *which* FHIR server and *that* a launch exists. Nothing about the patient. |
-| 3 | A standard OAuth2 authorisation request, carrying the handle. |
-| 4 | Instead of a login form, Keycloak sends the browser back into OpenMRS with a blank to fill in. |
-| 5 | The request arrives with the OpenMRS session cookie, so the module knows it is `doctor`. It signs that fact, plus the patient, with the secret both sides share. Keycloak verifies the signature, not the session. |
-| 6 | The app receives a code and trades it for a token. |
+Six hops, and the interesting one is the fourth.
 
-<details>
-<summary>The raw redirect trace</summary>
+**Hop 1.** OpenMRS mints a launch handle — 256 bits from a CSPRNG, single-use, and bound to the clinician
+who minted it — and redirects the browser to the application's launch URL, which it looks up in the app
+registry rather than accepting from the request.
 
-Recorded during this walkthrough into [`launch-redirects.txt`](launch-redirects.txt); credentials
-redacted, shape intact. Each `302` says "go here next".
+**Hops 2–3.** The application reads `{iss}/.well-known/smart-configuration` and redirects to the
+authorization server with `aud`, the launch handle, and a PKCE `S256` challenge.
 
-```http
-302 /openmrs/ms/smartEhrLaunchServlet?appId=test-app&patientId=c3ab5d9b-…
-302 http://localhost:3000/?iss=…%2Fws%2Ffhir2%2FR4&launch=<handle>
-302 …/openid-connect/auth?client_id=smartClient&response_type=code&code_challenge_method=S256&launch=<handle>
-302 /openmrs/smartonfhir/smartAccessConfirmation?token=…%26app-token%3D%7BAPP_TOKEN%7D&launch=<handle>
-302 …/realms/openmrs/login-actions/authenticate?session_code=…&app-token=<signed token>
-200 http://localhost:3000/?state=…&code=<authorisation code>
+**Hop 4 is the part people ask about.** Keycloak has to authenticate the clinician, and it has never seen
+them — remember, no Keycloak session was created at login. Rather than showing a password form, it sends
+the browser to OpenMRS, which reads its *own* session cookie and signs a short-lived token naming the
+clinician with a secret both sides hold.
+
+**Hop 5.** Keycloak verifies that token with the same key and treats it as the login. The EHR vouches;
+Keycloak does not peek.
+
+**Hop 6.** An authorization code reaches the application, which exchanges it for an access token. The
+launch context arrives in the token response body, where SMART says it belongs:
+
+```json
+{ "access_token": "…", "token_type": "Bearer", "expires_in": 300,
+  "patient": "9ff54c5b-…", "scope": "openid launch fhirUser patient/Patient.rs …" }
 ```
 
-</details>
+The id_token carries `fhirUser` — `Practitioner/705f5791-…` — so the application also knows *who* is
+using it.
 
-## 6. The app has the patient
+## If there is no OpenMRS session
 
-![The app, showing the patient it was launched for](images/07-app-received-the-patient.png)
-
-The token response carried the launch context, and the app used it to read the record over FHIR:
-
-- **Granted scopes** — `openid launch profile fhirUser patient/Patient.rs`
-- **Patient in launch context** — `c3ab5d9b-…`, the patient whose chart the launch started from
-- **Token type** `Bearer`, expiring in **300s**
-
-Note where the patient arrived: **in the token response, not in the access token's claims.** SMART
-2.x puts launch context there, and an app that looks for a `patient` claim inside the JWT will find
-nothing.
-
-Then the app read `Patient/c3ab5d9b-…` from `/ws/fhir2/R4` with that bearer token and rendered the
-name, identifier, gender and birth date. That read is the proof the whole chain worked: the token is
-verified against the authorization server's published keys, `aud` is checked, and the bearer session
-lasts exactly one request.
-
-## What to do when it does not work
-
-| Symptom | Where to look |
-|---|---|
-| No **Launch an app** in the Actions menu | Is the frontend module installed? `curl …/spa/importmap.json`. If a config file adds the extension to a slot, check that slot is one this version renders. |
-| The dialog says no apps are available | `config/smart-apps.json` is missing or every entry lacks an `id` or `launchUrl`. |
-| The launch stops at a Keycloak error page | `./realm/check-realm.py`, then `docker compose logs keycloak`. A realm that imported cleanly can still be wired wrong. |
-| The app gets a token but every FHIR call answers 401 | `aud` in `config/smart-oauth2.json` must match what the app sends, and the bearer scheme must be registered in `openmrs-runtime.properties`. |
-| The app receives no patient | The `launch` scope needs its context mapper. `./realm/check-realm.py` checks this. |
-
-`./verify-env.sh` walks both launch flows and asserts 63 separate things about them; run it before
-debugging by hand.
+Then hop 4 has nobody to vouch for. OpenMRS returns no token, Keycloak stops waiting for one, and the
+flow falls through to a password form — the ordinary way in. This is worth stating because it is the case
+that made the launch silent: the silence is not single sign-on, it is an OpenMRS session cookie doing the
+work. Take the cookie away and Keycloak asks.
