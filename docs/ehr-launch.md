@@ -57,6 +57,17 @@ Look at what it is doing. It is not displaying the record back:
 Those numbers agree with the chart in step 2 — same pressures, same pulse, same saturation, same BMI —
 which is the point: two independent readings of one record.
 
+The controls along the top belong to the application, not to OpenMRS. **Sign out** ends the authorization
+server's session as well as the app's, because closing the tab leaves that session open and the next
+launch is then granted silently as whoever launched last. The period chips narrow every chart, measured
+back from the most recent reading rather than from today.
+
+And none of this was built here. The application is released on its own and pulled as an image —
+[openmrs-smart-vitals-reviews-app](https://github.com/mherman22/openmrs-smart-vitals-reviews-app) — which
+is what a site does with any third-party SMART app. It was given a client id and a FHIR server through
+its environment and nothing else; it has no knowledge of this distribution, and this distribution holds
+none of its source.
+
 ## What happened on the wire
 
 Recorded during this walkthrough into [`launch-redirects.txt`](launch-redirects.txt), with credentials
