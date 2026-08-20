@@ -135,18 +135,26 @@ services:
       start_period: 20s
 
   smart-app:
-    # The demonstration SMART application. Served on the address the realm permits as a redirect target
-    # and the app registry names as a launch URL, so all three agree by construction.
-    build:
-      context: ./smart-app
+    # The SMART application, which is developed and released on its own:
+    # https://github.com/mherman22/openmrs-smart-vitals-reviews-app
+    #
+    # Only its image appears here, and deliberately. A SMART application is a third-party artefact by
+    # nature -- it reads the record over the FHIR API like any other client and knows nothing about this
+    # distribution -- so building it from a directory in this repository would misrepresent the very
+    # boundary the demonstration exists to show. Everything it needs is an environment variable.
+    #
+    # It is served on the address the realm permits as a redirect target and the app registry names as a
+    # launch URL, so all three agree by construction. The image carries its own healthcheck.
+    image: ghcr.io/mherman22/openmrs-smart-vitals-reviews-app:${SMART_APP_VERSION:-0.1.0}
     restart: unless-stopped
     ports:
-      - "${SMART_APP_PORT:-3000}:80"
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -q -O /dev/null http://localhost/launch.html" ]
-      interval: 10s
-      timeout: 5s
-      retries: 6
+      - "${SMART_APP_PORT:-3000}:8080"
+    environment:
+      SMART_CLIENT_ID: smartClient
+      # Enables the standalone launch as well as the EHR one: with a FHIR server configured, opening the
+      # app directly sends the clinician to sign in and choose a patient rather than refusing.
+      SMART_ISS: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
+      SMART_ORGANIZATION: OpenMRS Reference Application
 
   db:
     image: mariadb:10.11.7

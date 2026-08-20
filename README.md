@@ -65,9 +65,11 @@ docker-compose.yml     six services: db, backend, frontend, gateway, keycloak, s
 backend/               the reference application image, plus what its environment cannot express
 keycloak/              Keycloak with the JDBC driver, and realm/ — the realm itself
 frontend/              the app shell, assembled with the SMART launch module in it
-smart-app/             the demonstration SMART application
 docs/                  the walkthrough
 ```
+
+The SMART application itself is not here either. It is released on its own and consumed as an image, the
+way a site would consume any third-party SMART app; `SMART_APP_VERSION` in `.env` pins which one.
 
 Everything else the reference application distribution carries — its release pipeline, TLS automation,
 monitoring stack, and its own test suites — is not here. None of it is on the path of a local
@@ -111,14 +113,23 @@ deployment holding real records.
 | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | Keycloak's SMART OAuth2 extensions |
 | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | OpenMRS users as Keycloak's user store |
 | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | the chart action and the patient picker |
+| [openmrs-smart-vitals-reviews-app](https://github.com/mherman22/openmrs-smart-vitals-reviews-app) | the SMART application that gets launched. Not built here -- pulled as an image. |
 
 Those are forks. This work is not upstream yet, so cloning the `openmrs/…` repositories gives the
 pre-upgrade code.
 
+## Standalone launch
+
+Both launches work here. **http://localhost:3000/launch.html** with no parameters is a standalone launch:
+the application sends the clinician to sign in with their OpenMRS credentials and choose a patient, and the
+token comes back carrying that choice. Opening it from a chart is the EHR launch, and takes the patient the
+clinician was already looking at.
+
+It works because the compose file gives the application a `SMART_ISS` -- without a FHIR server to name, a
+standalone launch has nowhere to go, and the app says so rather than guessing one.
+
 ## What is not implemented
 
-- **Standalone launch.** The module, the realm and the patient picker all support it; the demonstration
-  application only implements the EHR half.
 - **Scope enforcement.** Scopes are requested, granted and returned, and nothing restricts a request by
   them — so a launched application acts with the privileges of the clinician who launched it. No
   `permission-*` capability is advertised, for that reason.
