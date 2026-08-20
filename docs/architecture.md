@@ -202,31 +202,38 @@ next app the previous patient.
 
 ## Launching an application this project did not write
 
-The point of SMART is that the server does not care whose application it is. That was tested with
-[SMART Health IT's sample app](https://launch.smarthealthit.org/sample-app/launch.html) — hosted
-elsewhere, written by someone else, and not adjustable by us.
+The point of SMART is that the server does not care whose application it is. Two changes were needed
+before an off-the-shelf application could even be registered, and both are worth keeping:
 
-Two changes were needed on the server side, both in the realm:
+- **A client whose id the app actually sends.** An app registered elsewhere sends whatever client id it
+  was built with, so the realm needs a client with that exact id and that app's redirect URI.
+- **The wildcard scopes such apps ask for.** `patient/*.*` and `user/*.*` are refused outright by
+  Keycloak, which will not expand a wildcard -- a scope must exist as a client scope to be requestable.
+  Both are defined as empty markers, and **only on the third-party client**: `smartClient` still answers
+  `invalid_scope` for them, deliberately. Nothing here enforces scopes, so a granted wildcard grants
+  nothing today; the day enforcement lands it becomes a claim that must be honoured or withdrawn.
 
-- **A client whose id the app actually sends.** That app sends `client_id=whatever`, literally, so a
-  public client with that id exists in the realm with `https://launch.smarthealthit.org/*` as a redirect
-  URI and PKCE `S256` required.
-- **The wildcard scopes it asks for.** It requests `patient/*.*` and `user/*.*`, and Keycloak refuses
-  any scope that does not exist as a client scope — it will not expand a wildcard. Both are defined as
-  empty markers, and **only on that client**: `smartClient` still answers `invalid_scope` for them, which
-  is deliberate. Nothing here enforces scopes, so a granted wildcard grants nothing today; the day
-  enforcement lands it becomes a claim that must be honoured or withdrawn.
-
-With those in place the launch works up to the last hop:
+With those in place, the server side works end to end. Registering
+[SMART Health IT's sample app](https://launch.smarthealthit.org) and launching it produced:
 
 ```
-302  localhost/openmrs/ms/smartEhrLaunchServlet?appId=…&patientId=…
-200  launch.smarthealthit.org/sample-app/launch.html?iss=http://localhost/openmrs/ws/fhir2/R4&launch=…
+302  localhost/openmrs/ms/smartEhrLaunchServlet?appId=...&patientId=...
+200  launch.smarthealthit.org/sample-app/launch?iss=http://localhost/openmrs/ws/fhir2/R4&launch=...
 ```
 
-The registry resolved a third-party app, minted a launch handle and handed the browser over; the app
-loaded and began the handshake. It then stopped, and the reason is worth recording because it is not a
-conformance failure:
+The registry resolved an application it does not host, minted a launch handle, and handed the browser
+over with the two parameters the specification requires. That much is proven.
+
+### Two reasons it did not complete, only one of which is about this server
+
+**That particular app is not portable.** It base64-decodes the `launch` parameter and parses it as JSON
+-- `atob("abc123")` is `i\xb75\xdb`, and the app fails with `SyntaxError: Unexpected token 'i'`. SMART
+requires an application to treat `launch` as opaque and hand it back unread; this one expects the
+encoded context its own launcher puts there. It is a companion to that launcher rather than a portable
+SMART app, so it cannot work against any other EHR, including this one. Choosing it was a mistake.
+
+**A publicly hosted app cannot reach a server on localhost.** Independently of the above, a fetch from
+`https://launch.smarthealthit.org` to our discovery document is refused by the browser:
 
 ```
 Access to fetch at 'http://localhost/openmrs/ws/fhir2/R4/.well-known/smart-configuration'
@@ -234,12 +241,15 @@ from origin 'https://launch.smarthealthit.org' has been blocked by CORS policy:
 Permission was denied for this request to access the `loopback` address space.
 ```
 
-That is the browser's private-network rule: a page served from the public internet may not reach
-`localhost`, whatever CORS headers the server sends. Ours are correct — a preflight from that origin is
-answered with `Access-Control-Allow-Origin: *` and the `Authorization` header permitted, and `curl`
-completes the request — but a browser refuses before CORS is consulted.
+That is the browser's private-network rule, not a CORS failure: our headers are correct -- a preflight
+from that origin is answered `Access-Control-Allow-Origin: *` with the `Authorization` header permitted,
+and `curl` completes the request. A browser refuses before CORS is consulted. So any hosted third-party
+app will fail against a laptop deployment and would work against a routable hostname.
 
-So a hosted third-party app can launch against a deployment on a routable hostname and cannot launch
-against this one on a laptop. To demonstrate it locally, self-host the application so both ends are
-loopback. The realm keeps the client and the scopes, because they are what a deployment needs; the app is
-deliberately **not** in `backend/smart-apps.json`, so it does not appear in the chart menu and then fail.
+### What would actually prove it
+
+An application that treats `launch` as opaque, running somewhere the browser will let reach localhost --
+which means self-hosted. For conformance specifically the right instrument is
+[Inferno](https://inferno-framework.github.io/)'s SMART App Launch suite: it is a test client rather
+than a sample app, it runs in Docker beside this stack, and it reads the specification rather than
+this project's assumptions. It has never been run here, and is the largest untested claim remaining.
