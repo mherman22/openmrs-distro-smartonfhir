@@ -11,7 +11,7 @@ until you replace it** — the table below is the only thing that says so.
 
 | Artefact | Built from | Commit | SHA-256 |
 |---|---|---|---|
-| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `cd193ab` (master) | `2829f5af7afe72145833c5ef537d65f0…` |
+| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `0f646bf` (FM2-687) | `98f04cc3591cc4afc625f277ce388e81…` |
 | `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `560c365` (FM2-690) | `99825f379b190c7b2a06000d2726fe8a…` |
 | `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (master) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
 | `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `38ac54e` (main) | `eb307b81a5a65679872157b084faa998…` |
