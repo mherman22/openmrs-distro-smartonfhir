@@ -199,3 +199,47 @@ app reads; the **access token**, so a resource server can see which patient a to
 **id_token**, which is where `fhirUser` goes. Every note is rewritten on every launch — blank where a
 launch establishes nothing — because the session outlives a single launch and a stale note would hand the
 next app the previous patient.
+
+## Launching an application this project did not write
+
+The point of SMART is that the server does not care whose application it is. That was tested with
+[SMART Health IT's sample app](https://launch.smarthealthit.org/sample-app/launch.html) — hosted
+elsewhere, written by someone else, and not adjustable by us.
+
+Two changes were needed on the server side, both in the realm:
+
+- **A client whose id the app actually sends.** That app sends `client_id=whatever`, literally, so a
+  public client with that id exists in the realm with `https://launch.smarthealthit.org/*` as a redirect
+  URI and PKCE `S256` required.
+- **The wildcard scopes it asks for.** It requests `patient/*.*` and `user/*.*`, and Keycloak refuses
+  any scope that does not exist as a client scope — it will not expand a wildcard. Both are defined as
+  empty markers, and **only on that client**: `smartClient` still answers `invalid_scope` for them, which
+  is deliberate. Nothing here enforces scopes, so a granted wildcard grants nothing today; the day
+  enforcement lands it becomes a claim that must be honoured or withdrawn.
+
+With those in place the launch works up to the last hop:
+
+```
+302  localhost/openmrs/ms/smartEhrLaunchServlet?appId=…&patientId=…
+200  launch.smarthealthit.org/sample-app/launch.html?iss=http://localhost/openmrs/ws/fhir2/R4&launch=…
+```
+
+The registry resolved a third-party app, minted a launch handle and handed the browser over; the app
+loaded and began the handshake. It then stopped, and the reason is worth recording because it is not a
+conformance failure:
+
+```
+Access to fetch at 'http://localhost/openmrs/ws/fhir2/R4/.well-known/smart-configuration'
+from origin 'https://launch.smarthealthit.org' has been blocked by CORS policy:
+Permission was denied for this request to access the `loopback` address space.
+```
+
+That is the browser's private-network rule: a page served from the public internet may not reach
+`localhost`, whatever CORS headers the server sends. Ours are correct — a preflight from that origin is
+answered with `Access-Control-Allow-Origin: *` and the `Authorization` header permitted, and `curl`
+completes the request — but a browser refuses before CORS is consulted.
+
+So a hosted third-party app can launch against a deployment on a routable hostname and cannot launch
+against this one on a laptop. To demonstrate it locally, self-host the application so both ends are
+loopback. The realm keeps the client and the scopes, because they are what a deployment needs; the app is
+deliberately **not** in `backend/smart-apps.json`, so it does not appear in the chart menu and then fail.

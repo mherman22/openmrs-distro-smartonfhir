@@ -220,6 +220,24 @@
           }
         }
       ]
+    },
+    {
+      "name": "patient/*.*",
+      "description": "SMART wildcard scope. Defined only so an app that asks for it is not refused: Keycloak will not expand a wildcard, so the scope must exist to be requestable. It grants nothing, because nothing here enforces scopes.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    },
+    {
+      "name": "user/*.*",
+      "description": "SMART wildcard scope. Defined only so an app that asks for it is not refused: Keycloak will not expand a wildcard, so the scope must exist to be requestable. It grants nothing, because nothing here enforces scopes.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
     }
   ],
   "clients": [
@@ -259,6 +277,46 @@
         "patient/Condition.rs",
         "patient/Encounter.rs",
         "offline_access"
+      ],
+      "protocolMappers": []
+    },
+    {
+      "clientId": "whatever",
+      "name": "SMART Health IT sample app",
+      "description": "A third-party SMART app this project neither wrote nor hosts. Its client id is literally \"whatever\" -- that is what the app sends.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "https://launch.smarthealthit.org/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "fhirUser",
+        "launch",
+        "fhir-audience"
+      ],
+      "optionalClientScopes": [
+        "launch/encounter",
+        "launch/patient",
+        "offline_access",
+        "patient/*.*",
+        "patient/Condition.rs",
+        "patient/Encounter.rs",
+        "patient/Observation.rs",
+        "patient/Patient.rs",
+        "user/*.*"
       ],
       "protocolMappers": []
     }
