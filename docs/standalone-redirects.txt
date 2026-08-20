@@ -1,0 +1,8 @@
+200 http://localhost:3000/launch.html
+200 http://localhost:8180/realms/openmrs/protocol/openid-connect/auth?response_type=code&client_id=smartClient&scope=launch%2Fpatient%20openid%20fhirUser%20patient%2FPatient.rs%20patient%2FObservation.rs%20patient%2FCondition.rs%20patient%2FEncounter.rs&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Findex.html&aud=http%3A%2F%2Flocalhost%2Fopenmrs%2Fws%2Ffhir2%2FR4&state=<state>&code_challenge=<PKCE challenge>&code_challenge_method=S256
+302 http://localhost:8180/realms/openmrs/login-actions/authenticate?session_code=<session code>&execution=<execution>&client_id=smartClient&tab_id=<tab id>&client_data=<client data>
+302 http://localhost/openmrs/ms/smartPatientSelection?token=<patient selection token>
+200 http://localhost/openmrs/spa/smart/select-patient?token=<patient selection token>
+302 http://localhost/openmrs/ms/smartLaunchOptionSelected?token=<patient selection token>&patientId=<patient uuid>
+302 http://localhost:8180/realms/openmrs/login-actions/action-token?key=<action token>&client_id=smartClient&tab_id=<tab id>&execution=<execution>&app-token=<signed launch token>
+200 http://localhost:3000/index.html?state=<state>&session_state=<session state>&iss=http%3A%2F%2Flocalhost%3A8180%2Frealms%2Fopenmrs&code=<authorization code>
