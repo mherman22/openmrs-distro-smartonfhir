@@ -28,11 +28,6 @@ services:
     # by frontend/config-core_demo.json at runtime.
     build:
       context: ./frontend
-      additional_contexts:
-        # The frontend module's own checkout. Passed as a build context because a Dockerfile cannot read
-        # outside its own, and packing it during the build avoids both publishing it and committing a
-        # tarball here.
-        esm: ${ESM_REPO:-../openmrs-esm-smart-app-launch-app}
     restart: unless-stopped
     environment:
       SPA_PATH: /openmrs/spa
@@ -81,8 +76,10 @@ services:
       # Which apps may be launched. Read-only: what a deployment permits is not something a running
       # system should be able to rewrite.
       - ./backend/smart-apps.json:/openmrs/data/config/smart-apps.json:ro
-      # Built from ../openmrs-module-smartonfhir with `mvn clean install`.
-      - ${SMARTONFHIR_OMOD:-../openmrs-module-smartonfhir/omod/target/smartonfhir-2.0.0-SNAPSHOT.omod}:/openmrs/distribution/openmrs_modules/smartonfhir.omod:ro
+      # Shipped in this repository so a clone starts without building anything first; see ARTIFACTS.md
+      # for which commit it was built from and how to replace it. Point SMARTONFHIR_OMOD at your own
+      # build to work on the module.
+      - ${SMARTONFHIR_OMOD:-./backend/modules/smartonfhir.omod}:/openmrs/distribution/openmrs_modules/smartonfhir.omod:ro
 
   keycloak:
     # Keycloak plus the federation provider's JDBC driver; see keycloak/Dockerfile.
@@ -112,11 +109,11 @@ services:
     ports:
       - "${KEYCLOAK_PORT:-8180}:8080"
     volumes:
-      # Built from ../openmrs-contrib-keycloak-smart-auth with `mvn clean install`.
-      - ${SMART_AUTH_JAR:-../openmrs-contrib-keycloak-smart-auth/keycloak-smart-auth/target/keycloak-smart-auth-1.0.0-SNAPSHOT.jar}:/opt/keycloak/providers/openmrs-smart-auth.jar:ro
+      # Shipped in this repository; see ARTIFACTS.md. Override with SMART_AUTH_JAR to run your own build.
+      - ${SMART_AUTH_JAR:-./keycloak/providers/keycloak-smart-auth.jar}:/opt/keycloak/providers/openmrs-smart-auth.jar:ro
       # Optional: lets clinicians sign in with the OpenMRS password they already have. Without it,
       # Keycloak users are created and kept in step by hand.
-      - ${USERSTORE_JAR:-../openmrs-contrib-keycloak-auth/openmrs-keycloak-userstore/target/openmrs-keycloak-userstore-1.0.0-SNAPSHOT.jar}:/opt/keycloak/providers/openmrs-userstore.jar:ro
+      - ${USERSTORE_JAR:-./keycloak/providers/openmrs-keycloak-userstore.jar}:/opt/keycloak/providers/openmrs-userstore.jar:ro
       - ./keycloak/realm:/opt/keycloak/data/import:ro
       # Keycloak state is deliberately not persisted: the realm is declarative and re-imported on every
       # start, so a persisted database would only let a container drift from the committed realm.
@@ -145,7 +142,7 @@ services:
     #
     # It is served on the address the realm permits as a redirect target and the app registry names as a
     # launch URL, so all three agree by construction. The image carries its own healthcheck.
-    image: ghcr.io/mherman22/openmrs-smart-vitals-reviews-app:${SMART_APP_VERSION:-0.1.0}
+    image: ghcr.io/mherman22/openmrs-smart-vitals-reviews-app:${SMART_APP_VERSION:-0.1.1}
     restart: unless-stopped
     ports:
       - "${SMART_APP_PORT:-3000}:8080"

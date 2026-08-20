@@ -5,7 +5,9 @@ The OpenMRS Reference Application with SMART on FHIR: **Keycloak 26** as its aut
 SMART application that launches from a patient's chart already holding that patient's record.
 
 **[Walk through the launch, with screenshots](docs/ehr-launch.md)** — what a clinician sees, what happens
-on the wire, and why no second login appears.
+on the wire, and why no second login appears. Then
+**[the standalone launch](docs/standalone-launch.md)**, which is the same handshake without an EHR, and
+**[the architecture](docs/architecture.md)** — every component, every hop, and what authenticates what.
 
 ## Getting it running
 
@@ -22,36 +24,33 @@ Actions menu.
 
 ### What you need first
 
-Docker with Compose v2, and the four sibling checkouts this assembles, built once each:
+**Docker with Compose v2. That is all.** No JDK, no Maven, no Node, and no other checkout.
+
+The OpenMRS module, both Keycloak plugins and the frontend module are committed here as build outputs,
+because none of them is published anywhere. [ARTIFACTS.md](ARTIFACTS.md) records which commit each was
+built from and how to replace one. The SMART application is not committed — it is pulled as an image.
+
+To work on one of those repositories rather than just run the stack, point `.env` at your own build tree;
+ARTIFACTS.md has the three variables.
+
+### What a first run does, and what it needs from you
+
+The first `docker compose up -d` installs the OpenMRS database and loads demo data — 50 patients, six
+users, and the concepts the vitals app reads. Expect **five to ten minutes**, and do not interrupt it: a
+half-finished install leaves duplicate-constraint errors that need `docker compose down -v` and a clean
+retry.
+
+**Then restart the backend once.** OpenMRS runs its installation inside the running Tomcat, and
+`InitializationFilter` keeps redirecting every request to `/openmrs/initialsetup` until the webapp comes
+back up. Restart the gateway with it, or nginx keeps routing to the backend's previous container address
+and every request fails to connect:
 
 ```bash
-for repo in openmrs-module-smartonfhir openmrs-contrib-keycloak-smart-auth \
-            openmrs-contrib-keycloak-auth openmrs-esm-smart-app-launch-app; do
-  git clone https://github.com/mherman22/$repo.git
-done
-
-(cd openmrs-module-smartonfhir           && mvn clean install)   # the OpenMRS module
-(cd openmrs-contrib-keycloak-smart-auth  && mvn clean install)   # Keycloak's SMART extensions
-(cd openmrs-contrib-keycloak-auth        && mvn clean install)   # OpenMRS users as Keycloak's user store
+docker compose restart backend gateway
 ```
 
-Maven needs JDK 17 or newer. The frontend module needs no build of its own — the frontend image packs it.
-
-Every path is overridable in `.env` if your checkouts live elsewhere.
-
-### Two things a first run needs
-
-Neither is a defect, and both bite exactly once on a fresh database:
-
-**Set a password for the demo clinician.** OpenMRS's demo data creates `doctor` without one this stack can
-use:
-
-```bash
-UUID=$(curl -su admin:Admin123 "http://localhost/openmrs/ws/rest/v1/user?q=doctor&v=custom:(uuid,username)" \
-  | python3 -c "import sys,json;print(next(u['uuid'] for u in json.load(sys.stdin)['results'] if u['username']=='doctor'))")
-curl -su admin:Admin123 -X POST -H 'Content-Type: application/json' \
-  -d '{"newPassword":"OpenmrsDoc123"}' "http://localhost/openmrs/ws/rest/v1/password/$UUID"
-```
+**Sign in as** `doctor` / `Doctor123` — a clinician with a provider record, which is what lets the launch
+resolve a `fhirUser`. The administrator is `admin` / `Admin123`.
 
 **Patient search is empty until the index is built.** FHIR reads work immediately; the search box does
 not, because the Lucene index starts empty. Rebuild it from *Administration → Search Index*, or launch
@@ -61,11 +60,12 @@ from a chart reached by URL, which needs no search.
 
 ```
 docker-compose.yml     six services: db, backend, frontend, gateway, keycloak, smart-app
-.env.example           the launch secret, and where the built artefacts are
-backend/               the reference application image, plus what its environment cannot express
-keycloak/              Keycloak with the JDBC driver, and realm/ — the realm itself
-frontend/              the app shell, assembled with the SMART launch module in it
-docs/                  the walkthrough
+.env.example           the launch secret, and the overrides for a local build tree
+ARTIFACTS.md           the four committed build outputs: their source commits and how to replace them
+backend/               the reference application image, its config, and modules/ — the SMART omod
+keycloak/              Keycloak with the JDBC driver, realm/ — the realm, and providers/ — the plugins
+frontend/              the app shell, assembled with the committed SMART launch module in it
+docs/                  the two walkthroughs, and architecture.md
 ```
 
 The SMART application itself is not here either. It is released on its own and consumed as an image, the
