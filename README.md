@@ -81,27 +81,50 @@ demonstration, and each folder was one more thing to read before finding the fou
 `${SMART_LAUNCH_SECRET}` and six more placeholders; Keycloak substitutes them from its own environment
 during `--import-realm`. There is no rendering step and nothing generated.
 
-**The module is configured by environment variables, and by one file.** The reference application image
-turns `OMRS_EXTRA_SMART_ISSUER` into the runtime property `smart.issuer`, so the compose file states
-which authorization server to trust. The launchable apps are a list of objects rather than a handful of
-scalars and stay a file: `backend/smart-apps.json`, mounted read-only.
+**The module is configured by files.** `backend/smart-oauth2.json` states which authorization server
+to trust, for which FHIR server, and where its signing keys are; `backend/smart-apps.json` states which
+apps may be launched. Both are mounted read-only, because what a deployment trusts is not something a
+running system should be able to rewrite.
 
-**Both routes are in use here.** `backend/smart-oauth2.json` holds the settings no environment variable
-can express — the clock skew tolerated on a token, and the claim naming the OpenMRS user — while the
-compose file supplies the addresses, which have to follow `.env`. The module reads the file first and
-each `smart.*` property then overrides only the key it names, so the two are read together:
-
-```
-issuer                   http://localhost:8180/realms/openmrs        from OMRS_EXTRA_SMART_ISSUER
-authorization_endpoint   .../protocol/openid-connect/auth            derived from that issuer
-allowed-clock-skew        30                                         from smart-oauth2.json
+```json
+{
+  "issuer": "http://localhost:8180/realms/openmrs",
+  "audience": "http://localhost/openmrs/ws/fhir2/R4",
+  "jwks-uri": "http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs",
+  "advertised-jwks-uri": "http://localhost:8180/realms/openmrs/protocol/openid-connect/certs"
+}
 ```
 
-Put a key in whichever suits the deployment. Anything in the file that also has a property — `issuer`,
-`audience`, `jwks-uri`, `advertised-jwks-uri`, `username-claim` — is overridden when that property is
-set, and stands when it is not. The addresses are left to the environment here so that they and the
-realm's redirect URIs come from one place; a deployment with fixed addresses can move them into the
-file and drop the `OMRS_EXTRA_SMART_*` lines entirely.
+`jwks-uri` and `advertised-jwks-uri` differ on purpose: keys are fetched container-to-container, while
+an app reads the discovery document from a browser and needs an address that resolves there.
+
+**Change the addresses in step with `.env`.** Keycloak's realm takes its redirect URIs from
+`KEYCLOAK_PUBLIC_URL` and the rest, and this file is not generated from them — so moving the stack off
+localhost means editing both. They have to agree: the `audience` here is what the FHIR server demands
+of a token, and the realm is what mints it.
+
+**The launch secret stays in the environment**, as `SMART_LAUNCH_SECRET` in `.env`. It could go in
+`config/smart-secret-key.json`, but this repository is public and a signing key committed to it is a key
+anyone can sign a launch with.
+
+**Every key can be given as a runtime property instead**, which overrides the file key by key. The image
+turns `OMRS_EXTRA_<NAME>` into a lowercased runtime property with `_` becoming `.`, so
+`OMRS_EXTRA_SMART_ISSUER` arrives as `smart.issuer` and replaces the `issuer` above while leaving the
+rest of the file standing. That is the route for a deployment that would rather not mount a file, or
+that wants one value to follow its environment:
+
+| property | overrides |
+|---|---|
+| `smart.issuer` | `issuer` |
+| `smart.audience` | `audience` |
+| `smart.jwks.uri` | `jwks-uri` |
+| `smart.advertised.jwks.uri` | `advertised-jwks-uri` |
+| `smart.username.claim` | `username-claim` |
+| `smart.launch.secret` | `smart-shared-secret-key` in `smart-secret-key.json` |
+
+`allowed-clock-skew-seconds` and the explicit `authorization-endpoint`, `token-endpoint` and
+`introspection-endpoint` overrides have no property, so those are file-only. There is no property for
+the app registry either: a list of objects is not a scalar, and `smart-apps.json` stays a file.
 
 **One property cannot be expressed that way.** The image lowercases those names, and the authentication
 module reads `authentication.whiteList` with a capital L. That, and the two properties registering the
