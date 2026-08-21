@@ -113,7 +113,7 @@ to authorize; it is given a FHIR base URL through its environment and discovers 
 ```http
 GET /openmrs/ws/fhir2/R4/.well-known/smart-configuration
 Host: localhost
-Accept: */*
+Accept: application/json
 ```
 ```http
 200 OK

@@ -9,12 +9,28 @@ Committing a binary means it can silently drift from the source it was built fro
 the commit it came from. **If you change any of those repositories, the matching artefact here is stale
 until you replace it** — the table below is the only thing that says so.
 
+Two rows carry a commit their branch has since moved past, and deliberately: the `Built from` column
+states what was actually compiled, not what is newest. Both are checked below.
+
 | Artefact | Built from | Commit | SHA-256 |
 |---|---|---|---|
-| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `4c2c3f5` (fm2/687-7-docs) | `cf17fe3d8f799d3528399aba00f965f8…` |
+| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `885b543` (fm2/687-7-docs) | `e919da43cffdde933b541daa70d10ff0…` |
 | `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `35dc130` (FM2-690) | `ce742be59ac190b5c00712f5af3d17c2…` |
-| `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (master) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
+| `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (FM2-689) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
 | `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `38ac54e` (main) | `eb307b81a5a65679872157b084faa998…` |
+
+### Where a row is behind its branch, and why it is still current
+
+`openmrs-keycloak-userstore.jar` was built from `3d355a5`, which now survives only on
+`backup/pre-fm2-689`; the branch has moved to `FM2-689`. Nothing under `openmrs-keycloak-userstore/`
+differs between the two — the only change since is a pull request template — so the jar is current and
+rebuilding it would produce the same classes under a new timestamp.
+
+`esm-smart-app-launch.tgz` was built from `38ac54e` and `main` has moved on twice since, both times
+under `e2e/` only. Playwright specs are not packed into the frontend module, so the archive is current.
+
+Both were verified by diffing the recorded commit against the branch head, not assumed. A row whose
+*source* changes is a different matter, and means a rebuild.
 
 The SMART application itself is **not** here: it is published as an image and pulled at run time. See
 `SMART_APP_VERSION` in `.env.example`.
