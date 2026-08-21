@@ -81,9 +81,15 @@ demonstration, and each folder was one more thing to read before finding the fou
 `${SMART_LAUNCH_SECRET}` and six more placeholders; Keycloak substitutes them from its own environment
 during `--import-realm`. There is no rendering step and nothing generated.
 
-**The module is configured by environment variables.** The reference application image turns
-`OMRS_EXTRA_SMART_ISSUER` into the runtime property `smart.issuer`, so the compose file states which
-authorization server to trust and no configuration files are written.
+**The module is configured by environment variables, and by one file.** The reference application image
+turns `OMRS_EXTRA_SMART_ISSUER` into the runtime property `smart.issuer`, so the compose file states
+which authorization server to trust. The launchable apps are a list of objects rather than a handful of
+scalars and stay a file: `backend/smart-apps.json`, mounted read-only.
+
+The module layers the two sources, each property overriding only the key it names. This distribution
+sets every key it needs from the environment and mounts no `smart-oauth2.json` at all, but a deployment
+that wants one — for the clock skew, or an explicit introspection endpoint, which no property covers —
+can mount it and still override the issuer from its environment.
 
 **One property cannot be expressed that way.** The image lowercases those names, and the authentication
 module reads `authentication.whiteList` with a capital L. That, and the two properties registering the
