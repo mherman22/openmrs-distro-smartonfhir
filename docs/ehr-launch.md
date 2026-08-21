@@ -433,6 +433,53 @@ Authorization: Bearer <jwt>
 
 <!-- /wire:fhir -->
 
+## What the server is doing
+
+The hops above are what the browser sees. This is the same launch from inside OpenMRS, because the
+vouching is the part that surprises people and none of it is visible in a screenshot.
+
+**`SmartEhrLaunchServlet` starts it.** It requires `Context.getAuthenticatedUser()` — a launch is
+something a signed-in clinician does, so an anonymous request gets `401` rather than a redirect. It
+looks the application up in `SmartAppRegistry` by the `appId` it was given and answers `404` if the
+deployment has not registered it. The launch address comes from that registry entry and never from the
+request, which is what closed the open redirector this replaced.
+
+**`SmartLaunchContextService` mints the handle.** 256 bits from a `SecureRandom`, stored against the
+patient and visit, **bound to the username that minted it**, and **single use** — redeeming it removes
+it. So a handle that leaks is useless to anyone else, and useless twice to anyone. It lives in a
+five-minute cache, which is a launch's worth of time and not a session's. The application receives only
+that opaque handle; no patient identifier travels in the URL.
+
+**`SmartAccessConfirmation` is the vouching.** Keycloak sends the browser here with two things: the
+launch handle, and its own resume URL containing the literal `{APP_TOKEN}` — a slot for OpenMRS to fill.
+This servlet reads the **OpenMRS session cookie**, which is the only reason any of this is silent, and
+mints a short-lived HS256 JWT whose claims are the launch:
+
+| claim | what it says |
+|---|---|
+| `sub` | which clinician Keycloak should treat as logged in |
+| `patient` | the patient the chart was open on |
+| `visit` | the visit, when the launch named one |
+| `fhirUser` | that clinician as `Practitioner/{uuid}`, resolved from their provider record |
+
+It signs with the secret both servers hold, substitutes the token into Keycloak's slot, and redirects.
+The token expires in five minutes and is refused without an expiry at all, because an earlier version
+set none and left them replayable indefinitely.
+
+**Keycloak verifies and accepts.** It holds the same secret, so it can check the signature itself
+without calling OpenMRS back. Nothing here is single sign-on: no Keycloak session existed before this
+launch, and OpenMRS asserted the identity rather than Keycloak discovering it. **The EHR vouches;
+Keycloak does not peek.**
+
+**`SmartBearerTokenFilter` takes over afterwards.** From the moment the application holds an access
+token, it is on its own credentials, not the clinician's session — every FHIR request is verified
+against the authorization server's published keys and mapped to an OpenMRS user by the username claim.
+That is why the requests above carry `Authorization: Bearer` and no cookie.
+
+Each of those classes lives in
+[openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir), and
+[architecture.md](architecture.md) has the same sequence as a diagram.
+
 ## If there is no OpenMRS session
 
 Then hop 4 has nobody to vouch for. OpenMRS returns no token, Keycloak stops waiting for one, and the
