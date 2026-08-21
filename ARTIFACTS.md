@@ -17,7 +17,7 @@ states what was actually compiled, not what is newest. Both are checked below.
 | `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `885b543` (fm2/687-7-docs) | `e919da43cffdde933b541daa70d10ff0…` |
 | `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `35dc130` (FM2-690) | `ce742be59ac190b5c00712f5af3d17c2…` |
 | `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (FM2-689) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
-| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `38ac54e` (main) | `eb307b81a5a65679872157b084faa998…` |
+| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `16293e5` (main) | `a7732c4cfc7c3281d6beef3b33002ddc…` |
 
 ### Where a row is behind its branch, and why it is still current
 
@@ -26,11 +26,18 @@ states what was actually compiled, not what is newest. Both are checked below.
 differs between the two — the only change since is a pull request template — so the jar is current and
 rebuilding it would produce the same classes under a new timestamp.
 
-`esm-smart-app-launch.tgz` was built from `38ac54e` and `main` has moved on twice since, both times
-under `e2e/` only. Playwright specs are not packed into the frontend module, so the archive is current.
+Verified by diffing the recorded commit against the branch head, not assumed. A row whose *source*
+changes is a different matter, and means a rebuild -- which is what the frontend archive just had, for
+content-addressed chunk names.
 
-Both were verified by diffing the recorded commit against the branch head, not assumed. A row whose
-*source* changes is a different matter, and means a rebuild.
+### Replacing the frontend archive changes every chunk URL
+
+Its lazy chunks are named `[id].[contenthash].js` now, so a rebuild that changes their contents changes
+their URLs. That is deliberate: they used to be `117.js` and so on, served from a directory whose version
+never moves, and a browser holding one from an earlier build renders nothing but
+`__webpack_modules__[e] is undefined`. It also means the frontend image must be rebuilt for a new archive
+to reach anyone -- `docker compose up -d --build frontend` -- because the archive is baked in rather than
+mounted.
 
 The SMART application itself is **not** here: it is published as an image and pulled at run time. See
 `SMART_APP_VERSION` in `.env.example`.

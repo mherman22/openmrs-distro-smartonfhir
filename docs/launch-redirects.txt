@@ -1,4 +1,4 @@
-302 http://localhost/openmrs/ms/smartEhrLaunchServlet?appId=vitals-review&patientId=661445dc-9d7c-475b-8be3-37742372c636
+302 http://localhost/openmrs/ms/smartEhrLaunchServlet?appId=vitals-review&patientId=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa
 200 http://localhost:3000/launch.html?iss=http%3A%2F%2Flocalhost%2Fopenmrs%2Fws%2Ffhir2%2FR4&launch=<launch handle>
 302 http://localhost:8180/realms/openmrs/protocol/openid-connect/auth?response_type=code&client_id=smartClient&scope=launch%20openid%20fhirUser%20patient%2FPatient.rs%20patient%2FObservation.rs%20patient%2FCondition.rs%20patient%2FEncounter.rs&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Findex.html&aud=http%3A%2F%2Flocalhost%2Fopenmrs%2Fws%2Ffhir2%2FR4&state=<state>&launch=<launch handle>&code_challenge=<PKCE challenge>&code_challenge_method=S256
 302 http://localhost/openmrs/smartonfhir/smartAccessConfirmation?token=http%3A%2F%2Flocalhost%3A8180%2Frealms%2Fopenmrs%2Flogin-actions%2Fauthenticate%3Fsession_code%3D<session code>%26execution%3D<execution>%26client_id%3DsmartClient%26tab_id%3D<tab id>%26client_data%3D<client data>%26app-token%3D%7BAPP_TOKEN%7D&launch=<launch handle>
