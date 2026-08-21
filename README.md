@@ -4,9 +4,13 @@ openmrs-distro-smartonfhir
 The OpenMRS Reference Application with SMART on FHIR: **Keycloak 26** as its authorization server, and a
 SMART application that launches from a patient's chart already holding that patient's record.
 
-**[Walk through the launch, with screenshots](docs/ehr-launch.md)** — what a clinician sees, what happens
-on the wire, and why no second login appears. Then
-**[the standalone launch](docs/standalone-launch.md)**, which is the same handshake without an EHR, and
+**[Start here: SMART on FHIR with OpenMRS](docs/smart-on-fhir-with-openmrs.md)** — what SMART solves, which
+component answers which question, why the launch is silent, what the scopes mean, and what is not
+finished. Formerly the module's wiki, now versioned with the stack it describes.
+
+Then the walkthroughs, photographed against a running stack, each hop quoting the request and response it
+actually produced: **[an EHR launch](docs/ehr-launch.md)**,
+**[a standalone launch](docs/standalone-launch.md)**, and
 **[the architecture](docs/architecture.md)** — every component, every hop, and what authenticates what.
 
 ## Getting it running
@@ -156,8 +160,9 @@ deployment holding real records.
 | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | the chart action and the patient picker |
 | [openmrs-smart-vitals-reviews-app](https://github.com/mherman22/openmrs-smart-vitals-reviews-app) | the SMART application that gets launched. Not built here -- pulled as an image. |
 
-Those are forks. This work is not upstream yet, so cloning the `openmrs/…` repositories gives the
-pre-upgrade code.
+Those are forks. The module's work is in review upstream as a stack of six pull requests against
+`openmrs/openmrs-module-smartonfhir` — #35, then #29 through #33 — and until they land, cloning the
+`openmrs/…` repositories gives the pre-upgrade Keycloak 14 code.
 
 ## Standalone launch
 
