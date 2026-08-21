@@ -86,10 +86,22 @@ turns `OMRS_EXTRA_SMART_ISSUER` into the runtime property `smart.issuer`, so the
 which authorization server to trust. The launchable apps are a list of objects rather than a handful of
 scalars and stay a file: `backend/smart-apps.json`, mounted read-only.
 
-The module layers the two sources, each property overriding only the key it names. This distribution
-sets every key it needs from the environment and mounts no `smart-oauth2.json` at all, but a deployment
-that wants one — for the clock skew, or an explicit introspection endpoint, which no property covers —
-can mount it and still override the issuer from its environment.
+**Both routes are in use here.** `backend/smart-oauth2.json` holds the settings no environment variable
+can express — the clock skew tolerated on a token, and the claim naming the OpenMRS user — while the
+compose file supplies the addresses, which have to follow `.env`. The module reads the file first and
+each `smart.*` property then overrides only the key it names, so the two are read together:
+
+```
+issuer                   http://localhost:8180/realms/openmrs        from OMRS_EXTRA_SMART_ISSUER
+authorization_endpoint   .../protocol/openid-connect/auth            derived from that issuer
+allowed-clock-skew        30                                         from smart-oauth2.json
+```
+
+Put a key in whichever suits the deployment. Anything in the file that also has a property — `issuer`,
+`audience`, `jwks-uri`, `advertised-jwks-uri`, `username-claim` — is overridden when that property is
+set, and stands when it is not. The addresses are left to the environment here so that they and the
+realm's redirect URIs come from one place; a deployment with fixed addresses can move them into the
+file and drop the `OMRS_EXTRA_SMART_*` lines entirely.
 
 **One property cannot be expressed that way.** The image lowercases those names, and the authentication
 module reads `authentication.whiteList` with a capital L. That, and the two properties registering the

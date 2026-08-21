@@ -76,6 +76,10 @@ services:
       # Which apps may be launched. Read-only: what a deployment permits is not something a running
       # system should be able to rewrite.
       - ./backend/smart-apps.json:/openmrs/data/config/smart-apps.json:ro
+      # The settings the environment cannot express, such as the clock skew tolerated on a token. The
+      # OMRS_EXTRA_SMART_* values above override the keys they name and leave the rest of this file
+      # standing, so the two are read together rather than one instead of the other.
+      - ./backend/smart-oauth2.json:/openmrs/data/config/smart-oauth2.json:ro
       # Shipped in this repository so a clone starts without building anything first; see ARTIFACTS.md
       # for which commit it was built from and how to replace it. Point SMARTONFHIR_OMOD at your own
       # build to work on the module.

@@ -1,0 +1,4 @@
+{
+  "allowed-clock-skew-seconds": 30,
+  "username-claim": "preferred_username"
+}
