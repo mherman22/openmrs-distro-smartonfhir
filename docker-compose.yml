@@ -145,7 +145,7 @@ services:
     #
     # It is served on the address the realm permits as a redirect target and the app registry names as a
     # launch URL, so all three agree by construction. The image carries its own healthcheck.
-    image: ghcr.io/mherman22/openmrs-smart-vitals-reviews-app:${SMART_APP_VERSION:-0.1.1}
+    image: ghcr.io/mherman22/openmrs-smart-vitals-reviews-app:${SMART_APP_VERSION:-0.1.2}
     restart: unless-stopped
     ports:
       - "${SMART_APP_PORT:-3000}:8080"
@@ -155,6 +155,10 @@ services:
       # app directly sends the clinician to sign in and choose a patient rather than refusing.
       SMART_ISS: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
       SMART_ORGANIZATION: OpenMRS Reference Application
+      # Lets OpenMRS embed the app in an iframe rather than sending the clinician to another tab. The
+      # EHR and the app are different origins even on one host, so the EHR's origin has to be named:
+      # 'self' alone means localhost:3000 only, and the chart is served from localhost.
+      SMART_FRAME_ANCESTORS: "'self' ${OPENMRS_FRAME_ORIGIN:-http://localhost}"
 
   db:
     image: mariadb:10.11.7
