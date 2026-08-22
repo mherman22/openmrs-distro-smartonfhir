@@ -4,22 +4,39 @@
     "showUpcomingAppointments": true,
     "extensionSlots": {
       "action-menu-patient-chart-items-slot": {
-        "order": ["order-basket-action-menu"],
-        "add": ["launch-smart-app-action"]
+        "order": [
+          "order-basket-action-menu"
+        ],
+        "add": [
+          "launch-smart-app-action"
+        ]
       }
     }
   },
   "@openmrs/esm-ward-app": {
     "extensionSlots": {
       "action-menu-ward-patient-items-slot": {
-        "add": ["order-basket-action-menu"]
+        "add": [
+          "order-basket-action-menu"
+        ]
       }
     }
   },
   "@openmrs/esm-laboratory-app": {
-    "labTableColumns": ["name", "patientId", "urgency", "age", "sex", "totalOrders", "action"]
+    "labTableColumns": [
+      "name",
+      "patientId",
+      "urgency",
+      "age",
+      "sex",
+      "totalOrders",
+      "action"
+    ]
   },
   "@openmrs/esm-styleguide": {
     "Brand color #1": "#005d5d"
+  },
+  "@uwdigi/esm-smart-app-launch-app": {
+    "launchMode": "iframe"
   }
 }

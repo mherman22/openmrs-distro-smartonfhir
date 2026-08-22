@@ -17,7 +17,7 @@ states what was actually compiled, not what is newest. Both are checked below.
 | `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `885b543` (fm2/687-7-docs) | `e919da43cffdde933b541daa70d10ff0…` |
 | `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `35dc130` (FM2-690) | `ce742be59ac190b5c00712f5af3d17c2…` |
 | `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (FM2-689) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
-| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `16293e5` (main) | `a7732c4cfc7c3281d6beef3b33002ddc…` |
+| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `c9286fb` (main) | `bb85c11c08d6d20091121aea5ad842a8…` |
 
 ### Where a row is behind its branch, and why it is still current
 
@@ -75,6 +75,29 @@ Then update the commit and hash above, and recreate what consumes it:
 ```bash
 docker compose up -d --build --force-recreate backend keycloak frontend
 ```
+
+### Rebuilding the frontend after changing the frontend module
+
+Replacing `frontend/esm-smart-app-launch.tgz` is not enough on its own. `openmrs assemble` is an
+expensive layer and BuildKit will reuse it, so `docker compose build frontend` can produce an image that
+still serves the previous module while every other check looks right. Bust it explicitly:
+
+```bash
+docker compose build --build-arg CACHE_BUST="$(date +%s)" frontend
+docker compose up -d --force-recreate frontend
+```
+
+Comparing chunk filenames does **not** catch this: they are content-hashed, so unchanged chunks keep
+their names and the listing looks identical. Compare something that changes, such as the served
+`routes.json`:
+
+```bash
+docker compose exec frontend cat \
+  /usr/share/nginx/html/uwdigi-esm-smart-app-launch-app-1.0.0/routes.json
+```
+
+This cost two wrong diagnoses before it was noticed -- behaviour was attributed to the framework that
+was really a stale bundle.
 
 ## Working on a module without replacing the artefact
 
