@@ -53,6 +53,10 @@ services:
       # Keys are fetched container-to-container; apps read the discovery document from a browser.
       OMRS_EXTRA_SMART_JWKS_URI: http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs
       OMRS_EXTRA_SMART_ADVERTISED_JWKS_URI: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs/protocol/openid-connect/certs
+      # Both are the module's own defaults, stated so this file says what the deployment expects rather
+      # than inheriting it: the claim naming the OpenMRS user, and the skew tolerated on exp and nbf.
+      OMRS_EXTRA_SMART_USERNAME_CLAIM: preferred_username
+      OMRS_EXTRA_SMART_ALLOWED_CLOCK_SKEW_SECONDS: 30
       # A secret, so it stays out of the repository: OMRS_EXTRA_<NAME> arrives as smart.launch.secret.
       OMRS_EXTRA_SMART_LAUNCH_SECRET: ${SMART_LAUNCH_SECRET:?set SMART_LAUNCH_SECRET in .env}
       # The one app this deployment permits to be launched; an app declared nowhere cannot be launched.
