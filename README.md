@@ -94,45 +94,33 @@ that file, which is why nothing here ships one. The issuer and audience are deri
 `KEYCLOAK_PUBLIC_URL` and `FHIR_BASE_URL` the realm uses, so there is no second place to keep in
 step.
 
-```json
-{
-  "issuer": "http://localhost:8180/realms/openmrs",
-  "audience": "http://localhost/openmrs/ws/fhir2/R4",
-  "jwks-uri": "http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs",
-  "advertised-jwks-uri": "http://localhost:8180/realms/openmrs/protocol/openid-connect/certs"
-}
+```yaml
+OMRS_EXTRA_SMART_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs
+OMRS_EXTRA_SMART_AUDIENCE: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
+OMRS_EXTRA_SMART_JWKS_URI: http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs
+OMRS_EXTRA_SMART_ADVERTISED_JWKS_URI: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs/protocol/openid-connect/certs
+OMRS_EXTRA_SMART_USERNAME_CLAIM: preferred_username
+OMRS_EXTRA_SMART_ALLOWED_CLOCK_SKEW_SECONDS: 30
 ```
 
-`jwks-uri` and `advertised-jwks-uri` differ on purpose: keys are fetched container-to-container, while
-an app reads the discovery document from a browser and needs an address that resolves there.
+The image lower-cases each name, drops the `OMRS_EXTRA_` prefix and turns `_` into `.`, so the first of
+those arrives as `smart.issuer`. The last two restate the module's own defaults; they are here so this
+file says what the deployment expects rather than inheriting it.
 
-**Change the addresses in step with `.env`.** Keycloak's realm takes its redirect URIs from
-`KEYCLOAK_PUBLIC_URL` and the rest, and this file is not generated from them — so moving the stack off
-localhost means editing both. They have to agree: the `audience` here is what the FHIR server demands
-of a token, and the realm is what mints it.
+`smart.jwks.uri` and `smart.advertised.jwks.uri` differ on purpose: keys are fetched
+container-to-container, while an app reads the discovery document from a browser and needs an address
+that resolves there.
 
-**The launch secret stays in the environment**, as `SMART_LAUNCH_SECRET` in `.env`. It could go in
-`config/smart-secret-key.json`, but this repository is public and a signing key committed to it is a key
-anyone can sign a launch with.
+**The addresses come from `.env`.** Both the realm's redirect URIs and the issuer and audience above are
+derived from `KEYCLOAK_PUBLIC_URL` and `FHIR_BASE_URL`, so moving the stack off localhost is one edit
+rather than two places to keep in agreement.
 
-**Every key can be given as a runtime property instead**, which overrides the file key by key. The image
-turns `OMRS_EXTRA_<NAME>` into a lowercased runtime property with `_` becoming `.`, so
-`OMRS_EXTRA_SMART_ISSUER` arrives as `smart.issuer` and replaces the `issuer` above while leaving the
-rest of the file standing. That is the route for a deployment that would rather not mount a file, or
-that wants one value to follow its environment:
+**The launch secret stays in the environment**, as `SMART_LAUNCH_SECRET` in `.env`, because it is a
+secret and this repository is public: a signing key committed here is a key anyone can sign a launch
+with.
 
-| property | overrides |
-|---|---|
-| `smart.issuer` | `issuer` |
-| `smart.audience` | `audience` |
-| `smart.jwks.uri` | `jwks-uri` |
-| `smart.advertised.jwks.uri` | `advertised-jwks-uri` |
-| `smart.username.claim` | `username-claim` |
-| `smart.launch.secret` | `smart-shared-secret-key` in `smart-secret-key.json` |
-
-`allowed-clock-skew-seconds` and the explicit `authorization-endpoint`, `token-endpoint` and
-`introspection-endpoint` overrides have no property, so those are file-only. The app registry is the
-other way round: it is properties only, and has no file.
+Which apps may be launched is the same mechanism — see [Adding a SMART
+app](docs/adding-a-smart-app.md).
 
 **Everything the backend needs is an environment variable.** There is no custom backend image and no
 seeded properties file: the reference application image is used unmodified, and `docker-compose.yml`
