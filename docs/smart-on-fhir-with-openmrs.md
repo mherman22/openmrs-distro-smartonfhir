@@ -17,7 +17,7 @@ prior knowledge of SMART.
 |---|---|
 | **Why is there no Keycloak login page?** | [Why no login page appears](#why-no-login-page-appears). Authentication happens during the launch, not at OpenMRS login, and OpenMRS vouches with its own session cookie. |
 | **How do I run it?** | [`docker compose up -d`](../README.md#getting-it-running). Every artefact is committed, so nothing needs building first. |
-| **How is it configured?** | [A file, with runtime properties as overrides](../README.md#how-the-pieces-are-configured). |
+| **How is it configured?** | [Runtime properties, with one file for the authorization server](../README.md#how-the-pieces-are-configured). |
 | **What does `patient/Observation.rs` mean?** | [Scopes](#scopes-and-what-this-stack-does-with-them). A compartment, a resource type and a set of interactions — and a ceiling, not a grant. |
 | **Why are scopes not enforced?** | [What is not implemented](#what-is-not-implemented-and-why). The prerequisite is in place; fhir2 offers no supported way to add a HAPI interceptor. |
 | **What does a launch actually look like?** | [EHR launch](ehr-launch.md) and [standalone launch](standalone-launch.md), photographed, with every request and response. |
@@ -239,7 +239,7 @@ such as `patient/*.rs` are not expanded for you.
 | Discovery document | `{fhirBase}/.well-known/smart-configuration` |
 | Launch entry point | `/openmrs/ms/smartEhrLaunchServlet` |
 | The vouching endpoint | `/openmrs/smartonfhir/smartAccessConfirmation` |
-| Launchable applications | the `smart.app.*` properties in `backend/runtime.properties` |
+| Launchable applications | the `smart.app.*` runtime properties, set in `docker-compose.yml` |
 | The realm | `keycloak/realm/openmrs-realm.json` in the distribution |
 | Where the launch action appears | `frontend/config-core_demo.json` |
 | Which frontend modules exist | `frontend/spa-assemble-config.json` |

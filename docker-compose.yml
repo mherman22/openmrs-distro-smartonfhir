@@ -1,14 +1,8 @@
-# The SMART on FHIR demonstration stack: OpenMRS Reference Application 3.7.1 with Keycloak 26 as its
-# authorization server, and a SMART application launched from a patient chart.
+# The SMART on FHIR demonstration stack: the O3 reference application, Keycloak 26 as its authorization
+# server, and a SMART application launched from a patient chart.
 #
 #   cp .env.example .env     # set SMART_LAUNCH_SECRET
 #   docker compose up -d --build
-#
-# One file rather than a reference-application base plus an overlay. The overlay was there to keep the
-# reference application's own compose untouched, which is worth something in a fork that tracks it and
-# nothing in a demonstration people have to be able to read. Everything below is either the reference
-# application unchanged or one of the four additions SMART needs: the realm, the two Keycloak providers,
-# the module, and the app.
 
 name: smartonfhir
 
@@ -23,9 +17,7 @@ services:
       - "${OPENMRS_PORT:-80}:80"
 
   frontend:
-    # Built rather than pulled, because the app shell has to be assembled with the SMART launch frontend
-    # module in it. Which modules exist is decided when the shell is built; where they appear is decided
-    # by frontend/config-core_demo.json at runtime.
+    # Built, not pulled: the app shell has to be assembled with the SMART launch frontend module in it.
     build:
       context: ./frontend
     restart: unless-stopped
@@ -41,12 +33,8 @@ services:
       - backend
 
   backend:
-    # The reference application image plus the runtime properties its environment cannot express; see
-    # backend/Dockerfile.
-    build:
-      context: ./backend
-      args:
-        TAG: ${TAG:-qa}
+    # The reference application image, unmodified: everything here is an environment variable or a mount.
+    image: openmrs/openmrs-reference-application-3-backend:${TAG:-qa}
     restart: unless-stopped
     depends_on:
       - db
@@ -58,46 +46,28 @@ services:
       OMRS_CONFIG_CONNECTION_DATABASE: openmrs
       OMRS_CONFIG_CONNECTION_USERNAME: ${OMRS_DB_USER:-openmrs}
       OMRS_CONFIG_CONNECTION_PASSWORD: ${OMRS_DB_PASSWORD:-openmrs}
-      # Which authorization server to trust is stated in backend/smart-oauth2.json, mounted below.
-      # Every key there can also be given as a runtime property, which overrides it -- see the README.
-      #
-      # The launch secret stays here because it is a secret: this repository is public, and a signing
-      # key committed to it is a key anyone can sign a launch with. The image turns OMRS_EXTRA_<NAME>
-      # into a runtime property, lowercased with '_' becoming '.', so this arrives as
-      # smart.launch.secret and overrides any config/smart-secret-key.json.
+      # A secret, so it stays out of the repository: OMRS_EXTRA_<NAME> arrives as smart.launch.secret.
       OMRS_EXTRA_SMART_LAUNCH_SECRET: ${SMART_LAUNCH_SECRET:?set SMART_LAUNCH_SECRET in .env}
-      # The one app this distribution permits to be launched. An app declared nowhere cannot be
-      # launched at all: SmartEhrLaunchServlet is given an id and looks the address up, rather than
-      # being told where to send the clinician.
-      #
-      # These arrive as smart.app.vitalsreview.*, and they take this route rather than being written
-      # into backend/runtime.properties because the server owns that file. The image merges every
-      # OMRS_EXTRA_* into openmrs-runtime.properties at every start; because this distribution ships
-      # that file (see backend/Dockerfile) it takes that path even on an empty volume, and the merged
-      # values survive InitializationFilter rewriting the file during the install. Where no such file
-      # exists the image instead writes them into openmrs-server.properties as property.<name>, which
-      # is what InitializationFilter reads -- so either way these reach the module.
-      #
-      # The id has no separator because '_' becomes '.' in that mapping and nothing becomes '-'. An id
-      # that needs a word break is written '__' here, which arrives as '_'.
+      # The one app this deployment permits to be launched; an app declared nowhere cannot be launched.
+      # These arrive as smart.app.vitalsreview.*, where the id is this deployment's own -- the module
+      # reads smart.app.<id>.<field> and knows no app names. No '-' in an id: '_' becomes '.' here.
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_NAME: Vitals Review
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_DESCRIPTION: Trends, derived BMI, and reference-range flagging for the launched patient
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_CLIENTID: smartClient
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_LAUNCHURL: http://localhost:3000/launch.html
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_LAUNCHCONTEXT: patient
+      # Registers the module's bearer scheme, so Context.authenticate can route a SMART token to it.
+      # Anything that is not a SMART credential is handed on to username/password, as before.
+      OMRS_EXTRA_AUTHENTICATION_SCHEME: smartbearer
+      OMRS_EXTRA_AUTHENTICATION_SCHEME_SMARTBEARER_TYPE: org.openmrs.module.smartonfhir.web.smart.SmartBearerTokenAuthenticationScheme
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/openmrs"]
       timeout: 5s
     volumes:
       - openmrs-data:/openmrs/data
-      # Which authorization server to trust, for which FHIR server, and where its keys are. Read-only:
-      # what a deployment trusts is not something a running system should be able to rewrite. Change
-      # the addresses here together with the matching values in .env -- Keycloak's realm reads those,
-      # and the two have to agree.
+      # Which authorization server to trust; read-only, and its addresses must agree with .env.
       - ./backend/smart-oauth2.json:/openmrs/data/config/smart-oauth2.json:ro
-      # Shipped in this repository so a clone starts without building anything first; see ARTIFACTS.md
-      # for which commit it was built from and how to replace it. Point SMARTONFHIR_OMOD at your own
-      # build to work on the module.
+      # Shipped so a clone starts without a build; see ARTIFACTS.md. SMARTONFHIR_OMOD points at your own.
       - ${SMARTONFHIR_OMOD:-./backend/modules/smartonfhir.omod}:/openmrs/distribution/openmrs_modules/smartonfhir.omod:ro
 
   keycloak:
@@ -107,15 +77,13 @@ services:
       args:
         KEYCLOAK_TAG: ${KEYCLOAK_TAG:-26.7.1}
     restart: unless-stopped
-    # Pinned deliberately. Every SPI the SMART provider implements is internal to Keycloak -- the server
-    # logs KC-SERVICES0047 for each -- so a minor upgrade can break it with no deprecation cycle.
+    # Pinned deliberately: every SPI the SMART provider implements is internal to Keycloak.
     command: [ start-dev, --import-realm ]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HEALTH_ENABLED: "true"
-      # Keycloak substitutes ${NAME} in an imported realm from its own environment, so the realm is
-      # committed as a template and needs no rendering step.
+      # Keycloak substitutes ${NAME} in an imported realm, so the realm is committed as a template.
       OPENMRS_BASE_URL: ${OPENMRS_BASE_URL:-http://localhost/openmrs}
       FHIR_BASE_URL: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
       SMART_APP_BASE_URL: ${SMART_APP_BASE_URL:-http://localhost:3000}
@@ -130,16 +98,12 @@ services:
     volumes:
       # Shipped in this repository; see ARTIFACTS.md. Override with SMART_AUTH_JAR to run your own build.
       - ${SMART_AUTH_JAR:-./keycloak/providers/keycloak-smart-auth.jar}:/opt/keycloak/providers/openmrs-smart-auth.jar:ro
-      # Optional: lets clinicians sign in with the OpenMRS password they already have. Without it,
-      # Keycloak users are created and kept in step by hand.
+      # Optional: lets clinicians sign in with the OpenMRS password they already have.
       - ${USERSTORE_JAR:-./keycloak/providers/openmrs-keycloak-userstore.jar}:/opt/keycloak/providers/openmrs-userstore.jar:ro
       - ./keycloak/realm:/opt/keycloak/data/import:ro
-      # Keycloak state is deliberately not persisted: the realm is declarative and re-imported on every
-      # start, so a persisted database would only let a container drift from the committed realm.
+      # Keycloak state is deliberately not persisted: the realm is re-imported on every start.
     depends_on:
-      # Not just the database: the user federation provider validates its Hibernate mappings against the
-      # OpenMRS schema as Keycloak starts, and on a first run that schema does not exist until OpenMRS
-      # has installed it. Waiting only for the database gave "Schema validation: missing table [person]".
+      # Waits for OpenMRS, not just the database: the federation provider validates against its schema.
       backend:
         condition: service_healthy
     healthcheck:
@@ -151,29 +115,18 @@ services:
       start_period: 20s
 
   smart-app:
-    # The SMART application, which is developed and released on its own:
-    # https://github.com/mherman22/openmrs-smart-vitals-reviews-app
-    #
-    # Only its image appears here, and deliberately. A SMART application is a third-party artefact by
-    # nature -- it reads the record over the FHIR API like any other client and knows nothing about this
-    # distribution -- so building it from a directory in this repository would misrepresent the very
-    # boundary the demonstration exists to show. Everything it needs is an environment variable.
-    #
-    # It is served on the address the realm permits as a redirect target and the app registry names as a
-    # launch URL, so all three agree by construction. The image carries its own healthcheck.
+    # The SMART application, released on its own and pulled as an image, because that is what a SMART
+    # application is: https://github.com/mherman22/openmrs-smart-vitals-reviews-app
     image: ghcr.io/mherman22/openmrs-smart-vitals-reviews-app:${SMART_APP_VERSION:-0.1.2}
     restart: unless-stopped
     ports:
       - "${SMART_APP_PORT:-3000}:8080"
     environment:
       SMART_CLIENT_ID: smartClient
-      # Enables the standalone launch as well as the EHR one: with a FHIR server configured, opening the
-      # app directly sends the clinician to sign in and choose a patient rather than refusing.
+      # Enables the standalone launch as well as the EHR one.
       SMART_ISS: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
       SMART_ORGANIZATION: OpenMRS Reference Application
-      # Lets OpenMRS embed the app in an iframe rather than sending the clinician to another tab. The
-      # EHR and the app are different origins even on one host, so the EHR's origin has to be named:
-      # 'self' alone means localhost:3000 only, and the chart is served from localhost.
+      # Lets OpenMRS embed the app in an iframe; the EHR's origin has to be named, 'self' is not enough.
       SMART_FRAME_ANCESTORS: "'self' ${OPENMRS_FRAME_ORIGIN:-http://localhost}"
 
   db:

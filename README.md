@@ -91,8 +91,8 @@ read-only, because what a deployment trusts is not something a running system sh
 rewrite. Which apps may be launched is runtime properties -- the `OMRS_EXTRA_SMART_APP_VITALSREVIEW_*`
 variables in `docker-compose.yml`, which the image turns into `smart.app.vitalsreview.*`. It merges
 them into `openmrs-runtime.properties` at every start, and they survive `InitializationFilter`
-rewriting that file during the install. The server owns that file, which is why the app is declared
-this way rather than by shipping one.
+rewriting that file during the install. The server owns that file, which is why nothing here ships
+one.
 
 ```json
 {
@@ -134,10 +134,12 @@ that wants one value to follow its environment:
 `introspection-endpoint` overrides have no property, so those are file-only. The app registry is the
 other way round: it is properties only, and has no file.
 
-**One property cannot be expressed that way.** The image lowercases those names, and the authentication
-module reads `authentication.whiteList` with a capital L. That, and the two properties registering the
-bearer scheme, are seeded by `backend/Dockerfile`. It seeds a *fresh* volume, so changing
-`backend/runtime.properties` means `docker compose down -v` too.
+**Everything the backend needs is an environment variable.** There is no custom backend image and no
+seeded properties file: the reference application image is used unmodified, and `docker-compose.yml`
+carries the launch secret, the app registration and the two properties registering the bearer scheme.
+The module asks nothing of `authentication.whiteList`, so what a deployment whitelists is its own
+decision — earlier revisions needed `/*` there, which switched the authentication module's gatekeeping
+off for the whole webapp.
 
 **The frontend is built, not pulled.** Which frontend modules exist is decided when the app shell is
 assembled, so `frontend/spa-assemble-config.json` names the SMART launch module and `frontend/Dockerfile`
