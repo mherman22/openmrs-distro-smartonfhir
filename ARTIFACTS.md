@@ -14,7 +14,7 @@ states what was actually compiled, not what is newest. Both are checked below.
 
 | Artefact | Built from | Commit | SHA-256 |
 |---|---|---|---|
-| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `7da22b6` (fm2/687-7-docs) | `490fdac04a06cafb9adeff65bce24040…` |
+| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `b7a436f` (fm2/687-7-docs) | `426c0cb2509fc96ec0eefd6250f1df57…` |
 | `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `35dc130` (FM2-690) | `ce742be59ac190b5c00712f5af3d17c2…` |
 | `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (FM2-689) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
 | `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `c9286fb` (main) | `bb85c11c08d6d20091121aea5ad842a8…` |
@@ -30,10 +30,10 @@ Verified by diffing the recorded commit against the branch head, not assumed. A 
 changes is a different matter, and means a rebuild -- which is what the frontend archive just had, for
 content-addressed chunk names.
 
-`smartonfhir.omod` names a commit that is local only. The stack it belongs to was rewritten to declare
-launchable apps in the runtime properties instead of a JSON file, so `fm2/687-7-docs` upstream is still
-the older `885b543`; the recorded commit appears there once the stack is force-pushed. The omod is the
-one this distribution needs -- the compose environment declares apps the way only this build reads.
+`smartonfhir.omod` is newer than the module's last release because the stack it comes from is not
+merged yet: it was rewritten to declare launchable apps in the runtime properties instead of a JSON
+file, and `fm2/687-7-docs` on openmrs/openmrs-module-smartonfhir carries that rewrite. This
+distribution needs that build -- the compose environment declares apps the way only it reads.
 
 ### Replacing the frontend archive changes every chunk URL
 
