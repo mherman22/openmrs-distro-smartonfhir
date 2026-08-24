@@ -66,14 +66,30 @@ services:
       # into a runtime property, lowercased with '_' becoming '.', so this arrives as
       # smart.launch.secret and overrides any config/smart-secret-key.json.
       OMRS_EXTRA_SMART_LAUNCH_SECRET: ${SMART_LAUNCH_SECRET:?set SMART_LAUNCH_SECRET in .env}
+      # The one app this distribution permits to be launched. An app declared nowhere cannot be
+      # launched at all: SmartEhrLaunchServlet is given an id and looks the address up, rather than
+      # being told where to send the clinician.
+      #
+      # These arrive as smart.app.vitalsreview.*, and they take this route rather than being written
+      # into backend/runtime.properties because the server owns that file. The image merges every
+      # OMRS_EXTRA_* into openmrs-runtime.properties at every start; because this distribution ships
+      # that file (see backend/Dockerfile) it takes that path even on an empty volume, and the merged
+      # values survive InitializationFilter rewriting the file during the install. Where no such file
+      # exists the image instead writes them into openmrs-server.properties as property.<name>, which
+      # is what InitializationFilter reads -- so either way these reach the module.
+      #
+      # The id has no separator because '_' becomes '.' in that mapping and nothing becomes '-'. An id
+      # that needs a word break is written '__' here, which arrives as '_'.
+      OMRS_EXTRA_SMART_APP_VITALSREVIEW_NAME: Vitals Review
+      OMRS_EXTRA_SMART_APP_VITALSREVIEW_DESCRIPTION: Trends, derived BMI, and reference-range flagging for the launched patient
+      OMRS_EXTRA_SMART_APP_VITALSREVIEW_CLIENTID: smartClient
+      OMRS_EXTRA_SMART_APP_VITALSREVIEW_LAUNCHURL: http://localhost:3000/launch.html
+      OMRS_EXTRA_SMART_APP_VITALSREVIEW_LAUNCHCONTEXT: patient
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/openmrs"]
       timeout: 5s
     volumes:
       - openmrs-data:/openmrs/data
-      # Which apps may be launched. Read-only: what a deployment permits is not something a running
-      # system should be able to rewrite.
-      - ./backend/smart-apps.json:/openmrs/data/config/smart-apps.json:ro
       # Which authorization server to trust, for which FHIR server, and where its keys are. Read-only:
       # what a deployment trusts is not something a running system should be able to rewrite. Change
       # the addresses here together with the matching values in .env -- Keycloak's realm reads those,

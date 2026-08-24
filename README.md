@@ -85,10 +85,14 @@ demonstration, and each folder was one more thing to read before finding the fou
 `${SMART_LAUNCH_SECRET}` and six more placeholders; Keycloak substitutes them from its own environment
 during `--import-realm`. There is no rendering step and nothing generated.
 
-**The module is configured by files.** `backend/smart-oauth2.json` states which authorization server
-to trust, for which FHIR server, and where its signing keys are; `backend/smart-apps.json` states which
-apps may be launched. Both are mounted read-only, because what a deployment trusts is not something a
-running system should be able to rewrite.
+**The module is configured by a file and by properties.** `backend/smart-oauth2.json` states which
+authorization server to trust, for which FHIR server, and where its signing keys are; it is mounted
+read-only, because what a deployment trusts is not something a running system should be able to
+rewrite. Which apps may be launched is runtime properties -- the `OMRS_EXTRA_SMART_APP_VITALSREVIEW_*`
+variables in `docker-compose.yml`, which the image turns into `smart.app.vitalsreview.*`. It merges
+them into `openmrs-runtime.properties` at every start, and they survive `InitializationFilter`
+rewriting that file during the install. The server owns that file, which is why the app is declared
+this way rather than by shipping one.
 
 ```json
 {
@@ -127,8 +131,8 @@ that wants one value to follow its environment:
 | `smart.launch.secret` | `smart-shared-secret-key` in `smart-secret-key.json` |
 
 `allowed-clock-skew-seconds` and the explicit `authorization-endpoint`, `token-endpoint` and
-`introspection-endpoint` overrides have no property, so those are file-only. There is no property for
-the app registry either: a list of objects is not a scalar, and `smart-apps.json` stays a file.
+`introspection-endpoint` overrides have no property, so those are file-only. The app registry is the
+other way round: it is properties only, and has no file.
 
 **One property cannot be expressed that way.** The image lowercases those names, and the authentication
 module reads `authentication.whiteList` with a capital L. That, and the two properties registering the

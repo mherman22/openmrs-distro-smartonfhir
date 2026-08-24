@@ -32,8 +32,9 @@ saturation 88.1%, and a BMI of 21.4. Keep those numbers in mind.
 ![The Actions menu, with Launch an app](images/05-actions-menu.png)
 
 **Launch an app** comes from the frontend module, placed in the chart's action menu by
-`frontend/config-core_demo.json`. The apps it offers come from the server — `backend/smart-apps.json` —
-not from the browser, so a deployment decides what may be launched and a page cannot ask for more.
+`frontend/config-core_demo.json`. The apps it offers come from the server — the
+`smart.app.*` properties in `backend/runtime.properties` — not from the browser, so a deployment
+decides what may be launched and a page cannot ask for more.
 
 ![The app picker](images/06-app-picker.png)
 
@@ -75,7 +76,7 @@ sequence is in [`launch-redirects.txt`](launch-redirects.txt); the request and r
 hop are written by the same run, so neither can drift from what the code does.
 
 ```
-302  /openmrs/ms/smartEhrLaunchServlet?appId=vitals-review&patientId=…
+302  /openmrs/ms/smartEhrLaunchServlet?appId=vitalsreview&patientId=…
 200  localhost:3000/launch.html?iss=…&launch=<launch handle>
 302  keycloak /protocol/openid-connect/auth?response_type=code&client_id=smartClient&…
 302  /openmrs/smartonfhir/smartAccessConfirmation?token=…&launch=<launch handle>
@@ -93,7 +94,7 @@ address the registry holds for it; nothing in the request could have changed whe
 <!-- wire:ehr-launch -->
 
 ```http
-GET /openmrs/ms/smartEhrLaunchServlet?appId=vitals-review&patientId=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa
+GET /openmrs/ms/smartEhrLaunchServlet?appId=vitalsreview&patientId=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa
 Host: localhost
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
 ```
