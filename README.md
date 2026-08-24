@@ -85,14 +85,14 @@ demonstration, and each folder was one more thing to read before finding the fou
 `${SMART_LAUNCH_SECRET}` and six more placeholders; Keycloak substitutes them from its own environment
 during `--import-realm`. There is no rendering step and nothing generated.
 
-**The module is configured by a file and by properties.** `backend/smart-oauth2.json` states which
-authorization server to trust, for which FHIR server, and where its signing keys are; it is mounted
-read-only, because what a deployment trusts is not something a running system should be able to
-rewrite. Which apps may be launched is runtime properties -- the `OMRS_EXTRA_SMART_APP_VITALSREVIEW_*`
-variables in `docker-compose.yml`, which the image turns into `smart.app.vitalsreview.*`. It merges
-them into `openmrs-runtime.properties` at every start, and they survive `InitializationFilter`
-rewriting that file during the install. The server owns that file, which is why nothing here ships
-one.
+**The module is configured entirely by environment variables.** It reads no configuration file of its
+own: which authorization server to trust, for which FHIR server, where its signing keys are, and which
+apps may be launched are all `OMRS_EXTRA_SMART_*` variables in `docker-compose.yml`, which the image
+turns into `smart.*` runtime properties. It merges them into `openmrs-runtime.properties` at every
+start, and they survive `InitializationFilter` rewriting that file during the install. The server owns
+that file, which is why nothing here ships one. The issuer and audience are derived from the same
+`KEYCLOAK_PUBLIC_URL` and `FHIR_BASE_URL` the realm uses, so there is no second place to keep in
+step.
 
 ```json
 {

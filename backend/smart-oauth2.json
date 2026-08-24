@@ -1,8 +1,0 @@
-{
-  "issuer": "http://localhost:8180/realms/openmrs",
-  "audience": "http://localhost/openmrs/ws/fhir2/R4",
-  "jwks-uri": "http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs",
-  "advertised-jwks-uri": "http://localhost:8180/realms/openmrs/protocol/openid-connect/certs",
-  "username-claim": "preferred_username",
-  "allowed-clock-skew-seconds": 30
-}

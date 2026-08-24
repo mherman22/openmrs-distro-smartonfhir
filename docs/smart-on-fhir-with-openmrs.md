@@ -106,8 +106,8 @@ forks.
 
 The [README](../README.md) is the operational half of this page: what a first run does, what it needs from
 you, and how each piece is configured. Two things worth knowing before you read it — the stack configures
-the module from `backend/smart-oauth2.json` rather than from environment variables, and every artefact it
-needs is committed, so `docker compose up -d` is the whole of it.
+the module entirely from environment variables, and every artefact it needs is committed, so
+`docker compose up -d` is the whole of it.
 
 ## A launch, step by step
 
@@ -243,5 +243,5 @@ such as `patient/*.rs` are not expanded for you.
 | The realm | `keycloak/realm/openmrs-realm.json` in the distribution |
 | Where the launch action appears | `frontend/config-core_demo.json` |
 | Which frontend modules exist | `frontend/spa-assemble-config.json` |
-| Which authorization server is trusted | `backend/smart-oauth2.json` in the distribution |
+| Which authorization server is trusted | the `OMRS_EXTRA_SMART_ISSUER` and `OMRS_EXTRA_SMART_AUDIENCE` variables in `docker-compose.yml` |
 | Every committed binary, and what it was built from | [ARTIFACTS.md](../ARTIFACTS.md) |

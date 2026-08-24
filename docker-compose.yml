@@ -46,6 +46,13 @@ services:
       OMRS_CONFIG_CONNECTION_DATABASE: openmrs
       OMRS_CONFIG_CONNECTION_USERNAME: ${OMRS_DB_USER:-openmrs}
       OMRS_CONFIG_CONNECTION_PASSWORD: ${OMRS_DB_PASSWORD:-openmrs}
+      # Which authorization server to trust, for which FHIR server. Change these together with the
+      # matching values in .env -- Keycloak's realm reads those, and the two have to agree.
+      OMRS_EXTRA_SMART_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs
+      OMRS_EXTRA_SMART_AUDIENCE: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
+      # Keys are fetched container-to-container; apps read the discovery document from a browser.
+      OMRS_EXTRA_SMART_JWKS_URI: http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs
+      OMRS_EXTRA_SMART_ADVERTISED_JWKS_URI: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs/protocol/openid-connect/certs
       # A secret, so it stays out of the repository: OMRS_EXTRA_<NAME> arrives as smart.launch.secret.
       OMRS_EXTRA_SMART_LAUNCH_SECRET: ${SMART_LAUNCH_SECRET:?set SMART_LAUNCH_SECRET in .env}
       # The one app this deployment permits to be launched; an app declared nowhere cannot be launched.
@@ -65,8 +72,6 @@ services:
       timeout: 5s
     volumes:
       - openmrs-data:/openmrs/data
-      # Which authorization server to trust; read-only, and its addresses must agree with .env.
-      - ./backend/smart-oauth2.json:/openmrs/data/config/smart-oauth2.json:ro
       # Shipped so a clone starts without a build; see ARTIFACTS.md. SMARTONFHIR_OMOD points at your own.
       - ${SMARTONFHIR_OMOD:-./backend/modules/smartonfhir.omod}:/openmrs/distribution/openmrs_modules/smartonfhir.omod:ro
 

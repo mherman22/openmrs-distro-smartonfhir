@@ -106,7 +106,7 @@ Location: http://localhost:3000/launch.html?iss=http%3A%2F%2Flocalhost%2Fopenmrs
 <!-- /wire:ehr-launch -->
 
 **Hop 2.** The application reads `{iss}/.well-known/smart-configuration`, which is served by
-`SmartConfigServlet` from `backend/smart-oauth2.json`. This is the only place the application learns where
+`SmartConfigServlet` from the `smart.*` runtime properties. This is the only place the application learns where
 to authorize; it is given a FHIR base URL through its environment and discovers the rest.
 
 <!-- wire:discovery -->
