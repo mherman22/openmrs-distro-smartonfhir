@@ -36,6 +36,12 @@ saturation 88.1%, and a BMI of 21.4. Keep those numbers in mind.
 `smart.app.*` runtime properties, set in `docker-compose.yml` — not from the browser, so a deployment
 decides what may be launched and a page cannot ask for more.
 
+The framed presentation adds `embedded=true` to the launch, which is the one thing only the browser
+knows: the chart is already showing a patient header above the frame. OpenMRS records it on the launch
+and the token response carries `need_patient_banner: false`, so the app leaves the naming of the patient
+to the chart instead of drawing a second banner under the first. A launch that takes over the window
+sends nothing and is told it needs its own.
+
 ![The app picker](images/06-app-picker.png)
 
 ## 4 · The app opens, already holding the patient
