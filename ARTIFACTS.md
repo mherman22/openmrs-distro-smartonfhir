@@ -14,10 +14,10 @@ states what was actually compiled, not what is newest. Both are checked below.
 
 | Artefact | Built from | Commit | SHA-256 |
 |---|---|---|---|
-| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `e699077` (fm2/687-8-patient-banner) | `f4d3a43ecaf883c9e1259b4e85449109…` |
-| `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `c31a3e2` (need-patient-banner) | `28e69a3c40e9256dd8a4106c3e986f92…` |
+| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `7645d25` (fm2/687-7-docs) | `29b73519e24a7f59dab77c775f03c22b…` |
+| `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `35dc130` (FM2-690) | `e40a8fdbe7851b811b2ff6845a745353…` |
 | `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (FM2-689) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
-| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `ef2d3e8` (main) | `fa16cb67ea71f66028b999dc2745b21c…` |
+| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `8f8e045` (main) | `105cf878d435da8904b3c62cb5a7058e…` |
 
 ### Where a row is behind its branch, and why it is still current
 
