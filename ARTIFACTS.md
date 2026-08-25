@@ -14,10 +14,10 @@ states what was actually compiled, not what is newest. Both are checked below.
 
 | Artefact | Built from | Commit | SHA-256 |
 |---|---|---|---|
-| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `a5e6ae3` (fm2/687-7-docs) | `20fd5bf3cd8a9c16b7177bbba025e370…` |
-| `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `35dc130` (FM2-690) | `e40a8fdbe7851b811b2ff6845a745353…` |
+| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `f0cbc9a` (fm2/687-7-docs) | `5be22fb570f2e43fb0663c14daa39787…` |
+| `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `c755f00` (FM2-690) | `35f577b9ebd9e264597dd719753e0180…` |
 | `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (FM2-689) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
-| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `8f8e045` (main) | `105cf878d435da8904b3c62cb5a7058e…` |
+| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `b9120a3` (main) | `40362b66ddb463a5237b70c2284567fa…` |
 
 ### Where a row is behind its branch, and why it is still current
 
@@ -29,6 +29,10 @@ rebuilding it would produce the same classes under a new timestamp.
 Verified by diffing the recorded commit against the branch head, not assumed. A row whose *source*
 changes is a different matter, and means a rebuild -- which is what the frontend archive just had, for
 content-addressed chunk names.
+
+`keycloak-smart-auth.jar` and `keycloak/realm/openmrs-realm.json` have to be replaced together: the
+authenticator config keys are named in both, and a mismatch imports a realm whose config the plugin
+never reads, so every launch fails with nothing configured.
 
 `smartonfhir.omod` is newer than the module's last release because the stack it comes from is not
 merged yet: it was rewritten to declare launchable apps in the runtime properties instead of a JSON
