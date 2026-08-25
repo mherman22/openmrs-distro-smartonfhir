@@ -10,26 +10,24 @@ worse than no walkthrough.
 
 ## 1 · Sign in to OpenMRS
 
-![The OpenMRS login screen](images/01-login.png)
-
-![Entering the password](images/02-password.png)
-
 An ordinary OpenMRS login. Worth noticing what does *not* happen here: nothing contacts Keycloak. At this
 point the browser holds one cookie, `JSESSIONID`, and no Keycloak session exists at all. That matters
 later.
+
+![The OpenMRS login screen](images/01-login.png)
+
+![Entering the password](images/02-password.png)
 
 ![Choosing a login location](images/03-location.png)
 
 ## 2 · Open a patient's chart
 
-![The patient chart](images/04-patient-chart.png)
-
 The chart shows this patient's vitals as OpenMRS records them: blood pressure 151/81, pulse 54, oxygen
 saturation 88.1%, and a BMI of 21.4. Keep those numbers in mind.
 
-## 3 · Launch an app
+![The patient chart](images/04-patient-chart.png)
 
-![The Actions menu, with Launch an app](images/05-actions-menu.png)
+## 3 · Launch an app
 
 **Launch an app** comes from the frontend module, placed in the chart's action menu by
 `frontend/config-core_demo.json`. The apps it offers come from the server — the
