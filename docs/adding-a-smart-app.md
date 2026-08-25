@@ -41,6 +41,10 @@ is re-imported on every start, so anything added through the console alone is lo
 Which apps may be launched is held in the database and managed through the REST resource, so
 registering one needs no restart and no change to `docker-compose.yml`.
 
+The `register-app` service in `docker-compose.override.yml` does exactly this for the demonstration app
+on first start, and skips the work when that name is already registered. It is worth reading as the
+shortest example of the call.
+
 ```bash
 curl -u admin:Admin123 -c /tmp/c http://localhost/openmrs/ws/rest/v1/session
 curl -b /tmp/c -X POST http://localhost/openmrs/ws/rest/v1/smartapp \

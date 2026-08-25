@@ -17,7 +17,6 @@ services:
       - "${OPENMRS_PORT:-80}:80"
 
   frontend:
-    # Built, not pulled: the app shell has to be assembled with the SMART launch frontend module in it.
     build:
       context: ./frontend
     restart: unless-stopped
@@ -33,7 +32,6 @@ services:
       - backend
 
   backend:
-    # The reference application image, unmodified: everything here is an environment variable or a mount.
     image: openmrs/openmrs-reference-application-3-backend:${TAG:-qa}
     restart: unless-stopped
     depends_on:
@@ -46,19 +44,13 @@ services:
       OMRS_CONFIG_CONNECTION_DATABASE: openmrs
       OMRS_CONFIG_CONNECTION_USERNAME: ${OMRS_DB_USER:-openmrs}
       OMRS_CONFIG_CONNECTION_PASSWORD: ${OMRS_DB_PASSWORD:-openmrs}
-      # Change these together with the matching values in .env; Keycloak's realm reads those.
       OMRS_EXTRA_SMART_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs
       OMRS_EXTRA_SMART_AUDIENCE: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
-      # Keys are fetched container-to-container; apps read the discovery document from a browser.
       OMRS_EXTRA_SMART_JWKS_URI: http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs
       OMRS_EXTRA_SMART_ADVERTISED_JWKS_URI: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs/protocol/openid-connect/certs
-      # The module's own defaults, stated so this file says what the deployment expects.
       OMRS_EXTRA_SMART_USERNAME_CLAIM: preferred_username
       OMRS_EXTRA_SMART_ALLOWED_CLOCK_SKEW_SECONDS: 10
-      # A secret, so it stays out of the repository: OMRS_EXTRA_<NAME> arrives as smart.launch.secret.
       OMRS_EXTRA_SMART_LAUNCH_SECRET: ${SMART_LAUNCH_SECRET:?set SMART_LAUNCH_SECRET in .env}
-      # Launchable apps are registered through the REST resource, not here; see docs/adding-a-smart-app.md.
-      # Registers the bearer scheme; anything that is not a SMART credential goes to username/password.
       OMRS_EXTRA_AUTHENTICATION_SCHEME: smartbearer
       OMRS_EXTRA_AUTHENTICATION_SCHEME_SMARTBEARER_TYPE: org.openmrs.module.smartonfhir.web.smart.SmartBearerTokenAuthenticationScheme
     healthcheck:
@@ -66,23 +58,19 @@ services:
       timeout: 5s
     volumes:
       - openmrs-data:/openmrs/data
-      # Shipped so a clone starts without a build; see ARTIFACTS.md. SMARTONFHIR_OMOD points at your own.
       - ${SMARTONFHIR_OMOD:-./backend/modules/smartonfhir.omod}:/openmrs/distribution/openmrs_modules/smartonfhir.omod:ro
 
   keycloak:
-    # Keycloak plus the federation provider's JDBC driver; see keycloak/Dockerfile.
     build:
       context: ./keycloak
       args:
         KEYCLOAK_TAG: ${KEYCLOAK_TAG:-26.7.1}
     restart: unless-stopped
-    # Pinned deliberately: every SPI the SMART provider implements is internal to Keycloak.
     command: [ start-dev, --import-realm ]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HEALTH_ENABLED: "true"
-      # Keycloak substitutes ${NAME} in an imported realm, so the realm is committed as a template.
       OPENMRS_BASE_URL: ${OPENMRS_BASE_URL:-http://localhost/openmrs}
       FHIR_BASE_URL: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
       SMART_APP_BASE_URL: ${SMART_APP_BASE_URL:-http://localhost:3000}
@@ -94,14 +82,10 @@ services:
     ports:
       - "${KEYCLOAK_PORT:-8180}:8080"
     volumes:
-      # Shipped in this repository; see ARTIFACTS.md. Override with SMART_AUTH_JAR to run your own build.
       - ${SMART_AUTH_JAR:-./keycloak/providers/keycloak-smart-auth.jar}:/opt/keycloak/providers/openmrs-smart-auth.jar:ro
-      # Optional: lets clinicians sign in with the OpenMRS password they already have.
       - ${USERSTORE_JAR:-./keycloak/providers/openmrs-keycloak-userstore.jar}:/opt/keycloak/providers/openmrs-userstore.jar:ro
       - ./keycloak/realm:/opt/keycloak/data/import:ro
-      # Keycloak state is deliberately not persisted: the realm is re-imported on every start.
     depends_on:
-      # Waits for OpenMRS, not just the database: the federation provider validates against its schema.
       backend:
         condition: service_healthy
     healthcheck:
@@ -112,19 +96,60 @@ services:
       start_period: 20s
 
   smart-app:
-    # Released on its own and pulled as an image, because that is what a SMART application is:
-    # https://github.com/mherman22/openmrs-smart-vitals-reviews-app
     image: ghcr.io/mherman22/openmrs-smart-vitals-reviews-app:${SMART_APP_VERSION:-0.1.4}
     restart: unless-stopped
     ports:
       - "${SMART_APP_PORT:-3000}:8080"
     environment:
       SMART_CLIENT_ID: smartClient
-      # Enables the standalone launch as well as the EHR one.
       SMART_ISS: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
       SMART_ORGANIZATION: OpenMRS Reference Application
-      # Lets OpenMRS embed the app in an iframe; the EHR's origin has to be named, 'self' is not enough.
       SMART_FRAME_ANCESTORS: "'self' ${OPENMRS_FRAME_ORIGIN:-http://localhost}"
+
+  # Registers the demonstration app once the backend answers, so `docker compose up -d` still leaves a
+  # stack you can launch from. Launchable apps live in the database now and are managed over REST, so
+  # there is nothing to declare as an environment variable.
+  register-app:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      - backend
+    restart: "no"
+    environment:
+      OMRS_ADMIN_USER: ${OMRS_ADMIN_USER:-admin}
+      OMRS_ADMIN_PASSWORD: ${OMRS_ADMIN_PASSWORD:-Admin123}
+      SMART_APP_NAME: ${SMART_APP_NAME:-Vitals Review}
+      SMART_APP_LAUNCH_URL: ${SMART_APP_LAUNCH_URL:-http://localhost:3000/launch.html}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        api="http://backend:8080/openmrs/ws/rest/v1/smartapp"
+        auth="$${OMRS_ADMIN_USER}:$${OMRS_ADMIN_PASSWORD}"
+
+        # The database install runs on first boot, so this waits rather than assuming a healthcheck.
+        n=0
+        until curl -sf -u "$$auth" "$$api" -o /tmp/apps.json; do
+          n=$$((n + 1))
+          if [ "$$n" -ge 120 ]; then
+            echo "OpenMRS did not answer after 20 minutes; not registering the app" >&2
+            exit 1
+          fi
+          sleep 10
+        done
+
+        # Idempotent: a name is unique, so registering twice is refused with 400.
+        if grep -q "$${SMART_APP_NAME}" /tmp/apps.json; then
+          echo "'$${SMART_APP_NAME}' is already registered"
+          exit 0
+        fi
+
+        curl -sf -u "$$auth" -X POST "$$api" -H 'Content-Type: application/json' -d "{
+            \"name\": \"$${SMART_APP_NAME}\",
+            \"description\": \"Trends, derived BMI, and reference-range flagging for the launched patient\",
+            \"launchUrl\": \"$${SMART_APP_LAUNCH_URL}\",
+            \"clientId\": \"smartClient\",
+            \"launchContext\": \"patient\"
+          }" -o /dev/null && echo "registered '$${SMART_APP_NAME}'"
 
   db:
     image: mariadb:10.11.7

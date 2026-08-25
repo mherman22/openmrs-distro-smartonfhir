@@ -20,8 +20,12 @@ cp .env.example .env                     # then set SMART_LAUNCH_SECRET
 docker compose up -d --build
 ```
 
-That is the whole thing: one compose file, six services, no scripts. The first run installs the OpenMRS
-database and takes several minutes; the frontend image is assembled from source and takes about the same.
+That is the whole thing: two compose files, seven services, no scripts. Compose reads
+`docker-compose.override.yml` automatically; the one service it adds runs once and exits, registering
+the demonstration app, which lives in the database rather than in a compose file.
+
+The first run installs the OpenMRS database and takes several minutes; the frontend image is assembled
+from source and takes about the same.
 
 Then open **http://localhost/openmrs/spa**, sign in, open a patient, and choose **Launch an app** from the
 Actions menu.
@@ -64,6 +68,7 @@ from a chart reached by URL, which needs no search.
 
 ```
 docker-compose.yml     six services: db, backend, frontend, gateway, keycloak, smart-app
+docker-compose.override.yml  register-app, which seeds the demonstration app and exits
 .env.example           the launch secret, and the overrides for a local build tree
 ARTIFACTS.md           the four committed build outputs: their source commits and how to replace them
 backend/               the reference application image, its config, and modules/ — the SMART omod
