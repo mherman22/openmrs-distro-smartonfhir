@@ -106,51 +106,6 @@ services:
       SMART_ORGANIZATION: OpenMRS Reference Application
       SMART_FRAME_ANCESTORS: "'self' ${OPENMRS_FRAME_ORIGIN:-http://localhost}"
 
-  # Registers the demonstration app once the backend answers, so `docker compose up -d` still leaves a
-  # stack you can launch from. Launchable apps live in the database now and are managed over REST, so
-  # there is nothing to declare as an environment variable.
-  register-app:
-    image: curlimages/curl:8.11.1
-    depends_on:
-      - backend
-    restart: "no"
-    environment:
-      OMRS_ADMIN_USER: ${OMRS_ADMIN_USER:-admin}
-      OMRS_ADMIN_PASSWORD: ${OMRS_ADMIN_PASSWORD:-Admin123}
-      SMART_APP_NAME: ${SMART_APP_NAME:-Vitals Review}
-      SMART_APP_LAUNCH_URL: ${SMART_APP_LAUNCH_URL:-http://localhost:3000/launch.html}
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        set -eu
-        api="http://backend:8080/openmrs/ws/rest/v1/smartapp"
-        auth="$${OMRS_ADMIN_USER}:$${OMRS_ADMIN_PASSWORD}"
-
-        # The database install runs on first boot, so this waits rather than assuming a healthcheck.
-        n=0
-        until curl -sf -u "$$auth" "$$api" -o /tmp/apps.json; do
-          n=$$((n + 1))
-          if [ "$$n" -ge 120 ]; then
-            echo "OpenMRS did not answer after 20 minutes; not registering the app" >&2
-            exit 1
-          fi
-          sleep 10
-        done
-
-        # Idempotent: a name is unique, so registering twice is refused with 400.
-        if grep -q "$${SMART_APP_NAME}" /tmp/apps.json; then
-          echo "'$${SMART_APP_NAME}' is already registered"
-          exit 0
-        fi
-
-        curl -sf -u "$$auth" -X POST "$$api" -H 'Content-Type: application/json' -d "{
-            \"name\": \"$${SMART_APP_NAME}\",
-            \"description\": \"Trends, derived BMI, and reference-range flagging for the launched patient\",
-            \"launchUrl\": \"$${SMART_APP_LAUNCH_URL}\",
-            \"clientId\": \"smartClient\",
-            \"launchContext\": \"patient\"
-          }" -o /dev/null && echo "registered '$${SMART_APP_NAME}'"
-
   db:
     image: mariadb:10.11.7
     restart: unless-stopped
