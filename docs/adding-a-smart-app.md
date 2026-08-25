@@ -118,6 +118,22 @@ deletes it outright.
 | The app is registered, but the menu is empty | The frontend module has to be *in the app shell*, which is decided when the frontend image is built. See ARTIFACTS.md. |
 | The launch reaches the app, which then fails at the token endpoint | Keycloak, not OpenMRS: check the client's redirect URIs and that its scopes exist as client scopes. |
 
+## Upgrading from the properties registry
+
+Apps used to be declared as `smart.app.<id>.*` runtime properties. Those properties are **sticky**: the
+image merges `OMRS_EXTRA_*` into `openmrs-runtime.properties` and keeps what that file already had, so
+deleting the variables from `docker-compose.yml` does not remove them. Nothing reads them any more, so
+they are harmless — but they are misleading to anyone reading the file, and they will outlive the
+change unless deleted:
+
+```bash
+docker compose exec backend sed -i '/^smart\.app\./d' /openmrs/data/openmrs-runtime.properties
+docker compose up -d --force-recreate backend
+```
+
+A deployment starting from an empty volume never has them. Register the app once through the REST
+resource instead; the record is in the database and survives restarts on its own.
+
 ## What the application itself has to do
 
 Nothing in this repository, and that is the point — a SMART application is a third-party artefact that

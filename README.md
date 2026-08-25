@@ -90,10 +90,11 @@ demonstration, and each folder was one more thing to read before finding the fou
 `${SMART_LAUNCH_SECRET}` and six more placeholders; Keycloak substitutes them from its own environment
 during `--import-realm`. There is no rendering step and nothing generated.
 
-**The module is configured entirely by environment variables.** It reads no configuration file of its
-own: which authorization server to trust, for which FHIR server, where its signing keys are, and which
-apps may be launched are all `OMRS_EXTRA_SMART_*` variables in `docker-compose.yml`, which the image
-turns into `smart.*` runtime properties. It merges them into `openmrs-runtime.properties` at every
+**The authorization server is configured entirely by environment variables.** The module reads no
+configuration file of its own: which authorization server to trust, for which FHIR server, and where
+its signing keys are, are all `OMRS_EXTRA_SMART_*` variables in `docker-compose.yml`, which the image
+turns into `smart.*` runtime properties. Which apps may be launched is not among them — that lives in
+the database, managed over REST. It merges them into `openmrs-runtime.properties` at every
 start, and they survive `InitializationFilter` rewriting that file during the install. The server owns
 that file, which is why nothing here ships one. The issuer and audience are derived from the same
 `KEYCLOAK_PUBLIC_URL` and `FHIR_BASE_URL` the realm uses, so there is no second place to keep in
@@ -105,7 +106,7 @@ OMRS_EXTRA_SMART_AUDIENCE: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4
 OMRS_EXTRA_SMART_JWKS_URI: http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs
 OMRS_EXTRA_SMART_ADVERTISED_JWKS_URI: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs/protocol/openid-connect/certs
 OMRS_EXTRA_SMART_USERNAME_CLAIM: preferred_username
-OMRS_EXTRA_SMART_ALLOWED_CLOCK_SKEW_SECONDS: 30
+OMRS_EXTRA_SMART_ALLOWED_CLOCK_SKEW_SECONDS: 10
 ```
 
 The image lower-cases each name, drops the `OMRS_EXTRA_` prefix and turns `_` into `.`, so the first of
