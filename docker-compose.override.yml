@@ -24,27 +24,44 @@ services:
         api="http://backend:8080/openmrs/ws/rest/v1/smartapp"
         auth="$${OMRS_ADMIN_USER}:$${OMRS_ADMIN_PASSWORD}"
 
-        # The database install runs on first boot, so this waits rather than assuming a healthcheck.
+        # A first boot installs the database and then loads demo data, and the REST API answers before
+        # either has finished. Registering during that window is lost: the row is written and the
+        # install then discards it, so the service exits happy and the registry is empty. So this waits
+        # for the install to settle, registers, and then confirms the row survived -- retrying the whole
+        # cycle if it did not.
+        registered=""
         n=0
-        until curl -sf -u "$$auth" "$$api" -o /tmp/apps.json; do
+        while [ "$$n" -lt 180 ]; do
           n=$$((n + 1))
-          if [ "$$n" -ge 120 ]; then
-            echo "OpenMRS did not answer after 20 minutes; not registering the app" >&2
-            exit 1
-          fi
           sleep 10
+
+          # 200 and a parseable list, not merely a reachable port.
+          curl -sf -u "$$auth" "$$api" -o /tmp/apps.json 2>/dev/null || continue
+          grep -q '"results"' /tmp/apps.json || continue
+
+          if grep -q "$${SMART_APP_NAME}" /tmp/apps.json; then
+            echo "'$${SMART_APP_NAME}' is registered"
+            exit 0
+          fi
+
+          # Only register once per pass; the next pass verifies it stuck.
+          if [ -z "$$registered" ]; then
+            if curl -sf -u "$$auth" -X POST "$$api" -H 'Content-Type: application/json' -d "{
+                \"name\": \"$${SMART_APP_NAME}\",
+                \"description\": \"Trends, derived BMI, and reference-range flagging for the launched patient\",
+                \"launchUrl\": \"$${SMART_APP_LAUNCH_URL}\",
+                \"clientId\": \"smartClient\",
+                \"launchContext\": \"patient\"
+              }" -o /dev/null 2>/dev/null; then
+              echo "registered '$${SMART_APP_NAME}'; confirming it survives the install"
+              registered="yes"
+            fi
+          else
+            # It was registered and is now absent, so the install discarded it. Try again.
+            echo "the registration did not survive; registering again"
+            registered=""
+          fi
         done
 
-        # Idempotent: a name is unique, so registering twice is refused with 400.
-        if grep -q "$${SMART_APP_NAME}" /tmp/apps.json; then
-          echo "'$${SMART_APP_NAME}' is already registered"
-          exit 0
-        fi
-
-        curl -sf -u "$$auth" -X POST "$$api" -H 'Content-Type: application/json' -d "{
-            \"name\": \"$${SMART_APP_NAME}\",
-            \"description\": \"Trends, derived BMI, and reference-range flagging for the launched patient\",
-            \"launchUrl\": \"$${SMART_APP_LAUNCH_URL}\",
-            \"clientId\": \"smartClient\",
-            \"launchContext\": \"patient\"
-          }" -o /dev/null && echo "registered '$${SMART_APP_NAME}'"
+        echo "gave up after 30 minutes; register the app with a POST to $$api" >&2
+        exit 1

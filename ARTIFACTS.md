@@ -35,9 +35,10 @@ authenticator config keys are named in both, and a mismatch imports a realm whos
 never reads, so every launch fails with nothing configured.
 
 `smartonfhir.omod` is newer than the module's last release because the stack it comes from is not
-merged yet: it was rewritten to declare launchable apps in the runtime properties instead of a JSON
-file, and `fm2/687-7-docs` on openmrs/openmrs-module-smartonfhir carries that rewrite. This
-distribution needs that build -- the compose environment declares apps the way only it reads.
+merged yet: launchable apps are now rows in the module's own table, registered over REST at
+`/ws/rest/v1/smartapp`, and `fm2/687-7-docs` on openmrs/openmrs-module-smartonfhir carries that work.
+This distribution needs that build — `docker-compose.override.yml` registers its app that way, and the
+table it writes to exists only in this omod.
 
 ### Replacing the frontend archive changes every chunk URL
 
