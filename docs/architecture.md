@@ -67,7 +67,7 @@ against. That is the single dependency the FHIR side has on the authorization se
 |---|---|---|
 | `/ws/fhir2/R4/.well-known/smart-configuration` | `SmartConfigServlet` | the discovery document, and the capability list |
 | `/ms/smartEhrLaunchServlet` | `SmartEhrLaunchServlet` | starts an EHR launch; mints the launch handle |
-| `/ms/smartApps` | `SmartAppsServlet` | which apps may be launched, for the chart menu |
+| `/ws/rest/v1/smartonfhir/apps` | `SmartAppsController` | which apps may be launched, for the chart menu |
 | `/smartonfhir/smartAccessConfirmation` | `SmartAccessConfirmation` | vouches for the signed-in clinician, and mints the app token |
 | `/ms/smartPatientSelection` | `SmartPatientSelectionServlet` | entry point for choosing a patient in a standalone launch |
 | every FHIR request | `SmartBearerTokenFilter` → `SmartBearerTokenAuthenticationScheme` | verifies the bearer token and binds the request to an OpenMRS user |

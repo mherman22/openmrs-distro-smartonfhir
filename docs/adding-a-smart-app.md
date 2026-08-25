@@ -77,7 +77,7 @@ at startup and never re-reads them.
 
 ```bash
 curl -u admin:Admin123 -c /tmp/c http://localhost/openmrs/ws/rest/v1/session
-curl -b /tmp/c http://localhost/openmrs/ms/smartApps
+curl -b /tmp/c http://localhost/openmrs/ws/rest/v1/smartonfhir/apps
 ```
 
 ```json

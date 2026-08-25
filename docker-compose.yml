@@ -46,29 +46,24 @@ services:
       OMRS_CONFIG_CONNECTION_DATABASE: openmrs
       OMRS_CONFIG_CONNECTION_USERNAME: ${OMRS_DB_USER:-openmrs}
       OMRS_CONFIG_CONNECTION_PASSWORD: ${OMRS_DB_PASSWORD:-openmrs}
-      # Which authorization server to trust, for which FHIR server. Change these together with the
-      # matching values in .env -- Keycloak's realm reads those, and the two have to agree.
+      # Change these together with the matching values in .env; Keycloak's realm reads those.
       OMRS_EXTRA_SMART_ISSUER: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs
       OMRS_EXTRA_SMART_AUDIENCE: ${FHIR_BASE_URL:-http://localhost/openmrs/ws/fhir2/R4}
       # Keys are fetched container-to-container; apps read the discovery document from a browser.
       OMRS_EXTRA_SMART_JWKS_URI: http://keycloak:8080/realms/openmrs/protocol/openid-connect/certs
       OMRS_EXTRA_SMART_ADVERTISED_JWKS_URI: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}/realms/openmrs/protocol/openid-connect/certs
-      # Both are the module's own defaults, stated so this file says what the deployment expects rather
-      # than inheriting it: the claim naming the OpenMRS user, and the skew tolerated on exp and nbf.
+      # The module's own defaults, stated so this file says what the deployment expects.
       OMRS_EXTRA_SMART_USERNAME_CLAIM: preferred_username
-      OMRS_EXTRA_SMART_ALLOWED_CLOCK_SKEW_SECONDS: 30
+      OMRS_EXTRA_SMART_ALLOWED_CLOCK_SKEW_SECONDS: 10
       # A secret, so it stays out of the repository: OMRS_EXTRA_<NAME> arrives as smart.launch.secret.
       OMRS_EXTRA_SMART_LAUNCH_SECRET: ${SMART_LAUNCH_SECRET:?set SMART_LAUNCH_SECRET in .env}
-      # The one app this deployment permits to be launched; an app declared nowhere cannot be launched.
-      # These arrive as smart.app.vitalsreview.*, where the id is this deployment's own -- the module
-      # reads smart.app.<id>.<field> and knows no app names. No '-' in an id: '_' becomes '.' here.
+      # The one app this deployment permits to be launched. The id is ours; no '-', since '_' becomes '.'.
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_NAME: Vitals Review
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_DESCRIPTION: Trends, derived BMI, and reference-range flagging for the launched patient
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_CLIENTID: smartClient
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_LAUNCHURL: http://localhost:3000/launch.html
       OMRS_EXTRA_SMART_APP_VITALSREVIEW_LAUNCHCONTEXT: patient
-      # Registers the module's bearer scheme, so Context.authenticate can route a SMART token to it.
-      # Anything that is not a SMART credential is handed on to username/password, as before.
+      # Registers the bearer scheme; anything that is not a SMART credential goes to username/password.
       OMRS_EXTRA_AUTHENTICATION_SCHEME: smartbearer
       OMRS_EXTRA_AUTHENTICATION_SCHEME_SMARTBEARER_TYPE: org.openmrs.module.smartonfhir.web.smart.SmartBearerTokenAuthenticationScheme
     healthcheck:
@@ -98,7 +93,6 @@ services:
       SMART_APP_BASE_URL: ${SMART_APP_BASE_URL:-http://localhost:3000}
       SMART_LAUNCH_SECRET: ${SMART_LAUNCH_SECRET:?set SMART_LAUNCH_SECRET in .env}
       SSL_REQUIRED: ${SSL_REQUIRED:-none}
-      # The user federation provider reads the OpenMRS users table directly.
       OPENMRS_JDBC_URL: jdbc:mysql://db:3306/openmrs
       OPENMRS_DB_USER: ${OMRS_DB_USER:-openmrs}
       OPENMRS_DB_PASSWORD: ${OMRS_DB_PASSWORD:-openmrs}
@@ -116,7 +110,6 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      # start-dev serves the management endpoints on 9000.
       test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'" ]
       interval: 5s
       timeout: 5s
@@ -124,8 +117,8 @@ services:
       start_period: 20s
 
   smart-app:
-    # The SMART application, released on its own and pulled as an image, because that is what a SMART
-    # application is: https://github.com/mherman22/openmrs-smart-vitals-reviews-app
+    # Released on its own and pulled as an image, because that is what a SMART application is:
+    # https://github.com/mherman22/openmrs-smart-vitals-reviews-app
     image: ghcr.io/mherman22/openmrs-smart-vitals-reviews-app:${SMART_APP_VERSION:-0.1.4}
     restart: unless-stopped
     ports:
