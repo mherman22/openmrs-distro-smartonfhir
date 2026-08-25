@@ -57,12 +57,7 @@ services:
       OMRS_EXTRA_SMART_ALLOWED_CLOCK_SKEW_SECONDS: 10
       # A secret, so it stays out of the repository: OMRS_EXTRA_<NAME> arrives as smart.launch.secret.
       OMRS_EXTRA_SMART_LAUNCH_SECRET: ${SMART_LAUNCH_SECRET:?set SMART_LAUNCH_SECRET in .env}
-      # The one app this deployment permits to be launched. The id is ours; no '-', since '_' becomes '.'.
-      OMRS_EXTRA_SMART_APP_VITALSREVIEW_NAME: Vitals Review
-      OMRS_EXTRA_SMART_APP_VITALSREVIEW_DESCRIPTION: Trends, derived BMI, and reference-range flagging for the launched patient
-      OMRS_EXTRA_SMART_APP_VITALSREVIEW_CLIENTID: smartClient
-      OMRS_EXTRA_SMART_APP_VITALSREVIEW_LAUNCHURL: http://localhost:3000/launch.html
-      OMRS_EXTRA_SMART_APP_VITALSREVIEW_LAUNCHCONTEXT: patient
+      # Launchable apps are registered through the REST resource, not here; see docs/adding-a-smart-app.md.
       # Registers the bearer scheme; anything that is not a SMART credential goes to username/password.
       OMRS_EXTRA_AUTHENTICATION_SCHEME: smartbearer
       OMRS_EXTRA_AUTHENTICATION_SCHEME_SMARTBEARER_TYPE: org.openmrs.module.smartonfhir.web.smart.SmartBearerTokenAuthenticationScheme

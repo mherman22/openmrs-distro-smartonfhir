@@ -14,10 +14,10 @@ states what was actually compiled, not what is newest. Both are checked below.
 
 | Artefact | Built from | Commit | SHA-256 |
 |---|---|---|---|
-| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `f0cbc9a` (fm2/687-7-docs) | `5be22fb570f2e43fb0663c14daa39787…` |
+| `backend/modules/smartonfhir.omod` | [openmrs-module-smartonfhir](https://github.com/mherman22/openmrs-module-smartonfhir) | `4927d67` (fm2/687-7-docs) | `5eddbf8df72be75df1116d6569c3c60b…` |
 | `keycloak/providers/keycloak-smart-auth.jar` | [openmrs-contrib-keycloak-smart-auth](https://github.com/mherman22/openmrs-contrib-keycloak-smart-auth) | `c755f00` (FM2-690) | `35f577b9ebd9e264597dd719753e0180…` |
 | `keycloak/providers/openmrs-keycloak-userstore.jar` | [openmrs-contrib-keycloak-auth](https://github.com/mherman22/openmrs-contrib-keycloak-auth) | `3d355a5` (FM2-689) | `69ae8721fa9f36e9a03b55f3fd0aeb1f…` |
-| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `b9120a3` (main) | `40362b66ddb463a5237b70c2284567fa…` |
+| `frontend/esm-smart-app-launch.tgz` | [openmrs-esm-smart-app-launch-app](https://github.com/mherman22/openmrs-esm-smart-app-launch-app) | `e45c585` (main) | `44ed7c06283bcb8f8b1025f8fdb5b6bd…` |
 
 ### Where a row is behind its branch, and why it is still current
 

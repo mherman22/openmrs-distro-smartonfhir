@@ -239,7 +239,7 @@ such as `patient/*.rs` are not expanded for you.
 | Discovery document | `{fhirBase}/.well-known/smart-configuration` |
 | Launch entry point | `/openmrs/ms/smartEhrLaunchServlet` |
 | The vouching endpoint | `/openmrs/smartonfhir/smartAccessConfirmation` |
-| Launchable applications | the `smart.app.*` runtime properties, set in `docker-compose.yml` |
+| Launchable applications | registered through `/openmrs/ws/rest/v1/smartapp` |
 | The realm | `keycloak/realm/openmrs-realm.json` in the distribution |
 | Where the launch action appears | `frontend/config-core_demo.json` |
 | Which frontend modules exist | `frontend/spa-assemble-config.json` |

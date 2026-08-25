@@ -31,8 +31,8 @@ saturation 88.1%, and a BMI of 21.4. Keep those numbers in mind.
 
 **Launch an app** comes from the frontend module, placed in the chart's action menu by
 `frontend/config-core_demo.json`. The apps it offers come from the server — the
-`smart.app.*` runtime properties, set in `docker-compose.yml` — not from the browser, so a deployment
-decides what may be launched and a page cannot ask for more.
+apps registered through `/ws/rest/v1/smartapp` — not from the browser, so a deployment decides what
+may be launched and a page cannot ask for more.
 
 ![The app picker](images/06-app-picker.png)
 
