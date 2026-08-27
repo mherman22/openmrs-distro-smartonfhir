@@ -47,14 +47,14 @@ Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/w
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>Sign in to openmrs</title>
-        <link rel="icon" href="/resources/jifsn/login/keycloak.v2/img/favicon.ico" />
-        <link href="/resources/jifsn/common/keycloak/vendor/patternfly-v5/patternfly.min.css" rel="stylesheet" />
-        <link href="/resources/jifsn/common/keycloak/vendor/patternfly-v5/patternfly-addons.css" rel="stylesheet" />
-        <link href="/resources/jifsn/login/keycloak.v2/css/styles.css" rel="stylesheet" />
+        <link rel="icon" href="/resources/ykfdd/login/keycloak.v2/img/favicon.ico" />
+        <link href="/resources/ykfdd/common/keycloak/vendor/patternfly-v5/patternfly.min.css" rel="stylesheet" />
+        <link href="/resources/ykfdd/common/keycloak/vendor/patternfly-v5/patternfly-addons.css" rel="stylesheet" />
+        <link href="/resources/ykfdd/login/keycloak.v2/css/styles.css" rel="stylesheet" />
     <script type="importmap">
         {
             "imports": {
-                "rfc4648": "/resources/jifsn/common/keycloak/vendor/rfc4648/rfc4648.js"
+                "rfc4648": "/resources/ykfdd/common/keycloak/vendor/rfc4648/rfc4648.js"
             }
         }
     </script>
@@ -150,13 +150,13 @@ restart:
 <!-- wire:patient-selection -->
 
 ```http
-GET /openmrs/ms/smartPatientSelection?token=http%3A%2F%2Flocalhost%3A8180%2Frealms%2Fopenmrs%2Flogin-actions%2Faction-token%3Fkey%3D<action token>%26client_id%3DsmartClient%26tab_id%3D<tab id> launch token>
+GET /openmrs/ms/smartPatientSelection?token=http%3A%2F%2Flocalhost%3A8180%2Frealms%2Fopenmrs%2Flogin-actions%2Faction-token%3Fkey%3D<action token>%26client_id%3DsmartClient%26tab_id%3D<tab id>
 Host: localhost
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
 ```
 ```http
 302 Found
-Location: /openmrs/spa/smart/select-patient?token=http%3A%2F%2Flocalhost%3A8180%2Frealms%2Fopenmrs%2Flogin-actions%2Faction-token%3Fkey%3D<action token>%26client_id%3DsmartClient%26tab_id%3D<tab id> launch token>
+Location: /openmrs/spa/smart/select-patient?token=http%3A%2F%2Flocalhost%3A8180%2Frealms%2Fopenmrs%2Flogin-actions%2Faction-token%3Fkey%3D<action token>%26client_id%3DsmartClient%26tab_id%3D<tab id>
 ```
 
 <!-- /wire:patient-selection -->
@@ -166,13 +166,13 @@ The choice goes back the same way, naming the patient the clinician picked:
 <!-- wire:launch-option-selected -->
 
 ```http
-GET /openmrs/ms/smartLaunchOptionSelected?token=http%3A%2F%2Flocalhost%3A8180%2Frealms%2Fopenmrs%2Flogin-actions%2Faction-token%3Fkey%3D<action token>%26client_id%3DsmartClient%26tab_id%3D<tab id> launch token>&patientId=d1f02dcf-50e5-476b-9552-366ab64a6a29
+GET /openmrs/ms/smartLaunchOptionSelected?token=http%3A%2F%2Flocalhost%3A8180%2Frealms%2Fopenmrs%2Flogin-actions%2Faction-token%3Fkey%3D<action token>%26client_id%3DsmartClient%26tab_id%3D<tab id>&patientId=f55eb7d6-ea40-44cf-8a30-df5d7e5b1a7b
 Host: localhost
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
 ```
 ```http
 302 Found
-Location: http://localhost:8180/realms/openmrs/login-actions/action-token?key=<action token>&client_id=smartClient&tab_id=<tab id>&execution=<execution>&app-token=<signed launch token>
+Location: http://localhost:8180/realms/openmrs/login-actions/action-token?key=<action token>&client_id=smartClient&tab_id=<tab id>&execution=<execution>&app_token=<signed launch token>
 ```
 
 <!-- /wire:launch-option-selected -->
@@ -206,8 +206,8 @@ code_verifier=<PKCE verifier>
   "id_token": "<jwt>",
   "not-before-policy": 0,
   "session_state": "<session state>",
-  "scope": "openid launch/patient fhirUser profile launch",
-  "patient": "d1f02dcf-50e5-476b-9552-366ab64a6a29",
+  "scope": "openid profile fhirUser launch launch/patient",
+  "patient": "f55eb7d6-ea40-44cf-8a30-df5d7e5b1a7b",
   "fhirUser": "Practitioner/705f5791-07a7-44b8-932f-a81f3526fc98"
 }
 ```
@@ -220,7 +220,7 @@ cannot read its own patient is not a working launch:
 <!-- wire:fhir -->
 
 ```http
-GET /openmrs/ws/fhir2/R4/Patient/d1f02dcf-50e5-476b-9552-366ab64a6a29
+GET /openmrs/ws/fhir2/R4/Patient/f55eb7d6-ea40-44cf-8a30-df5d7e5b1a7b
 Host: localhost
 Authorization: Bearer <jwt>
 Accept: application/json
@@ -231,14 +231,14 @@ Accept: application/json
 ```json
 {
   "resourceType": "Patient",
-  "id": "d1f02dcf-50e5-476b-9552-366ab64a6a29",
+  "id": "f55eb7d6-ea40-44cf-8a30-df5d7e5b1a7b",
   "meta": {
-    "versionId": "1787310376000",
-    "lastUpdated": "2026-08-21T11:06:16.000+00:00"
+    "versionId": "1787696025000",
+    "lastUpdated": "2026-08-25T22:13:45.000+00:00"
   },
   "text": {
     "status": "generated",
-    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>d1f02dcf-50e5-476b-9552-366ab64a6a29</td></tr><tr><td>Identifier:</td><td><div>100008E</div></td></tr><tr><td>Active:</td><td>true</td></tr><tr><td>Name:</td><td> Joshua <b>JOHNSON </b></td></tr><tr><td>Gender:</td><td>MALE</td></tr><tr><td>Birth Date:</td><td>25/09/2021</td></tr><tr><td>Deceased:</td><td>false</td></tr><tr><td>Address:</td><td><span>City6442 </span><span>State6442 </span><span>Country6442 </span></td></tr></tbody></table></div>"
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>f55eb7d6-ea40-44cf-8a30-df5d7e5b1a7b</td></tr><tr><td>Identifier:</td><td><div>100008E</div></td></tr><tr><td>Active:</td><td>true</td></tr><tr><td>Name:</td><td> Joshua <b>JOHNSON </b></td></tr><tr><td>Gender:</td><td>MALE</td></tr><tr><td>Birth Date:</td><td>25/09/2021</td></tr><tr><td>Deceased:</td><td>false</td></tr><tr><td>Address:</td><td><span>City6442 </span><span>State6442 </span><span>Country6442 </span></td></tr></tbody></table></div>"
   },
   "extension": [
     {
@@ -257,7 +257,7 @@ Accept: application/json
   ],
   "identifier": [
     {
-      "id": "d46fe869-2b07-4157-b8c6-ab71badcf186",
+      "id": "33a2d656-1160-4490-b6fb-4cca73dc5831",
       "extension": [
         {
           "url": "http://fhir.openmrs.org/ext/patient/identifier#location",

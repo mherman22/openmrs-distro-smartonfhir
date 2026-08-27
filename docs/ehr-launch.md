@@ -74,7 +74,7 @@ sequence is in [`launch-redirects.txt`](launch-redirects.txt); the request and r
 hop are written by the same run, so neither can drift from what the code does.
 
 ```
-302  /openmrs/ms/smartEhrLaunchServlet?appId=vitalsreview&patientId=…
+302  /openmrs/ms/smartEhrLaunchServlet?appId=<app uuid>&patientId=…
 200  localhost:3000/launch.html?iss=…&launch=<launch handle>
 302  keycloak /protocol/openid-connect/auth?response_type=code&client_id=smartClient&…
 302  /openmrs/smartonfhir/smartAccessConfirmation?token=…&launch=<launch handle>
@@ -87,12 +87,13 @@ Six hops, and the interesting one is the fourth.
 **Hop 1.** OpenMRS mints a launch handle — 256 bits from a CSPRNG, single-use, and bound to the clinician
 who minted it — and redirects the browser to the application's launch URL, which it looks up in the app
 registry rather than accepting from the request. Note that `appId` names the app and the `Location` is the
-address the registry holds for it; nothing in the request could have changed where this goes.
+address the registry holds for it; nothing in the request could have changed where this goes. The uuid is
+assigned when the app is registered, so it differs per deployment; `GET /ws/rest/v1/smartapp` lists yours.
 
 <!-- wire:ehr-launch -->
 
 ```http
-GET /openmrs/ms/smartEhrLaunchServlet?appId=vitalsreview&patientId=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa
+GET /openmrs/ms/smartEhrLaunchServlet?appId=bc99bd71-7148-491e-81b4-aa8819555fc8&patientId=09c08b19-8811-438c-832e-7897bb54ecfd
 Host: localhost
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
 ```
@@ -198,7 +199,7 @@ Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/w
 ```
 ```http
 302 Found
-Location: http://localhost:8180/realms/openmrs/login-actions/authenticate?session_code=<session code>&execution=<execution>&client_id=smartClient&tab_id=<tab id>&client_data=<client data>&app-token=<signed launch token>
+Location: http://localhost:8180/realms/openmrs/login-actions/authenticate?session_code=<session code>&execution=<execution>&client_id=smartClient&tab_id=<tab id>&client_data=<client data>&app_token=<signed launch token>
 ```
 
 <!-- /wire:access-confirmation -->
@@ -237,8 +238,8 @@ code_verifier=<PKCE verifier>
   "id_token": "<jwt>",
   "not-before-policy": 0,
   "session_state": "<session state>",
-  "scope": "openid patient/Encounter.rs fhirUser patient/Observation.rs profile launch patient/Condition.rs patient/Patient.rs",
-  "patient": "2e3c5f55-bb41-4ff2-a93b-c0851390f9fa",
+  "scope": "openid patient/Encounter.rs profile patient/Observation.rs fhirUser patient/Condition.rs launch patient/Patient.rs",
+  "patient": "09c08b19-8811-438c-832e-7897bb54ecfd",
   "fhirUser": "Practitioner/705f5791-07a7-44b8-932f-a81f3526fc98"
 }
 ```
@@ -257,7 +258,7 @@ server's published keys before OpenMRS sees it — there is no session and no co
 <!-- wire:fhir -->
 
 ```http
-GET /openmrs/ws/fhir2/R4/Patient/2e3c5f55-bb41-4ff2-a93b-c0851390f9fa
+GET /openmrs/ws/fhir2/R4/Patient/09c08b19-8811-438c-832e-7897bb54ecfd
 Host: localhost
 Accept: application/json
 Authorization: Bearer <jwt>
@@ -268,14 +269,14 @@ Authorization: Bearer <jwt>
 ```json
 {
   "resourceType": "Patient",
-  "id": "2e3c5f55-bb41-4ff2-a93b-c0851390f9fa",
+  "id": "09c08b19-8811-438c-832e-7897bb54ecfd",
   "meta": {
-    "versionId": "1787310376000",
-    "lastUpdated": "2026-08-21T11:06:16.000+00:00"
+    "versionId": "1787696024000",
+    "lastUpdated": "2026-08-25T22:13:44.000+00:00"
   },
   "text": {
     "status": "generated",
-    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>2e3c5f55-bb41-4ff2-a93b-c0851390f9fa</td></tr><tr><td>Identifier:</td><td><div>100000Y</div></td></tr><tr><td>Active:</td><td>true</td></tr><tr><td>Name:</td><td> Betty <b>WILLIAMS </b></td></tr><tr><td>Gender:</td><td>FEMALE</td></tr><tr><td>Birth Date:</td><td>15/03/1974</td></tr><tr><td>Deceased:</td><td>false</td></tr><tr><td>Address:</td><td><span>City5311 </span><span>State5311 </span><span>Country5311 </span></td></tr></tbody></table></div>"
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>09c08b19-8811-438c-832e-7897bb54ecfd</td></tr><tr><td>Identifier:</td><td><div>100000Y</div></td></tr><tr><td>Active:</td><td>true</td></tr><tr><td>Name:</td><td> Betty <b>WILLIAMS </b></td></tr><tr><td>Gender:</td><td>FEMALE</td></tr><tr><td>Birth Date:</td><td>15/03/1974</td></tr><tr><td>Deceased:</td><td>false</td></tr><tr><td>Address:</td><td><span>City5311 </span><span>State5311 </span><span>Country5311 </span></td></tr></tbody></table></div>"
   },
   "extension": [
     {
@@ -294,7 +295,7 @@ Authorization: Bearer <jwt>
   ],
   "identifier": [
     {
-      "id": "c826fa18-7e61-4795-b4d9-f9d827fca3d5",
+      "id": "b1943cf1-c58b-4e77-b041-8fddcebf7904",
       "extension": [
         {
           "url": "http://fhir.openmrs.org/ext/patient/identifier#location",
@@ -304,7 +305,7 @@ Authorization: Bearer <jwt>
 ```
 
 ```http
-GET /openmrs/ws/fhir2/R4/Condition?patient=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa&_count=100
+GET /openmrs/ws/fhir2/R4/Condition?patient=09c08b19-8811-438c-832e-7897bb54ecfd&_count=100
 Host: localhost
 Accept: application/json
 Authorization: Bearer <jwt>
@@ -324,27 +325,27 @@ Authorization: Bearer <jwt>
   "link": [
     {
       "relation": "self",
-      "url": "http://localhost/openmrs/ws/fhir2/R4/Condition?_count=100&patient=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa"
+      "url": "http://localhost/openmrs/ws/fhir2/R4/Condition?_count=100&patient=09c08b19-8811-438c-832e-7897bb54ecfd"
     }
   ],
   "entry": [
     {
-      "fullUrl": "http://localhost/openmrs/ws/fhir2/R4/Condition/f6a4bcaa-b487-4c7a-9858-7d719dcecc97",
+      "fullUrl": "http://localhost/openmrs/ws/fhir2/R4/Condition/a53851c7-ceb3-4a5b-8695-c56467548f80",
       "resource": {
         "resourceType": "Condition",
-        "id": "f6a4bcaa-b487-4c7a-9858-7d719dcecc97",
+        "id": "a53851c7-ceb3-4a5b-8695-c56467548f80",
         "meta": {
-          "versionId": "1670439018000",
-          "lastUpdated": "2022-12-07T18:50:18.000+00:00"
+          "versionId": "1670824666000",
+          "lastUpdated": "2022-12-12T05:57:46.000+00:00"
         },
         "text": {
           "status": "generated",
-          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>f6a4bcaa-b487-4c7a-9858-7d719dcecc97</td></tr><tr><td>Clinical Status:</td><td> Unknown </td></tr><tr><td>Verification Status:</td><td> Provisional </td></tr><tr><td>Category:</td><td> Encounter Diagnosis </td></tr><tr><td>Code:</td><td>Non-severe event supposed to be attributable to vaccination and immunization (ESAVI)</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2e3c5f55-bb41-4ff2-a93b-c0851390f9fa\">Betty Williams (OpenMRS ID: 100000Y)</a></td></tr><tr><td>Encounter:</td><td><a href=\"ht
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>a53851c7-ceb3-4a5b-8695-c56467548f80</td></tr><tr><td>Clinical Status:</td><td> Unknown </td></tr><tr><td>Verification Status:</td><td> Provisional </td></tr><tr><td>Category:</td><td> Encounter Diagnosis </td></tr><tr><td>Code:</td><td>Non-severe event supposed to be attributable to vaccination and immunization (ESAVI)</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/09c08b19-8811-438c-832e-7897bb54ecfd\">Betty Williams (OpenMRS ID: 100000Y)</a></td></tr><tr><td>Encounter:</td><td><a href=\"ht
 … truncated; 101328 more characters
 ```
 
 ```http
-GET /openmrs/ws/fhir2/R4/Encounter?patient=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa&_count=100
+GET /openmrs/ws/fhir2/R4/Encounter?patient=09c08b19-8811-438c-832e-7897bb54ecfd&_count=100
 Host: localhost
 Accept: application/json
 Authorization: Bearer <jwt>
@@ -364,18 +365,18 @@ Authorization: Bearer <jwt>
   "link": [
     {
       "relation": "self",
-      "url": "http://localhost/openmrs/ws/fhir2/R4/Encounter?_count=100&patient=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa"
+      "url": "http://localhost/openmrs/ws/fhir2/R4/Encounter?_count=100&patient=09c08b19-8811-438c-832e-7897bb54ecfd"
     }
   ],
   "entry": [
     {
-      "fullUrl": "http://localhost/openmrs/ws/fhir2/R4/Encounter/87553f28-40ff-4b43-be98-e5df04daf2d9",
+      "fullUrl": "http://localhost/openmrs/ws/fhir2/R4/Encounter/3cff761e-255b-4225-991b-d6ec1e40f415",
       "resource": {
         "resourceType": "Encounter",
-        "id": "87553f28-40ff-4b43-be98-e5df04daf2d9",
+        "id": "3cff761e-255b-4225-991b-d6ec1e40f415",
         "meta": {
-          "versionId": "1787310378000",
-          "lastUpdated": "2026-08-21T11:06:18.000+00:00",
+          "versionId": "1787696027000",
+          "lastUpdated": "2026-08-25T22:13:47.000+00:00",
           "tag": [
             {
               "system": "http://fhir.openmrs.org/ext/encounter-tag",
@@ -386,12 +387,12 @@ Authorization: Bearer <jwt>
         },
         "text": {
           "status": "generated",
-          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>87553f28-40ff-4b43-be98-e5df04daf2d9</td></tr><tr><td>Status:</td><td>UNKNOWN</td></tr><tr><td>Class:</td><td> (Details: http://terminology.hl7.org/CodeSystem/v3-ActCode ) </td></tr><tr><td>Type:</td><td> Group Session </td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2e3c5f55-bb41-4ff2-a93b-c0851390f9fa\
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>3cff761e-255b-4225-991b-d6ec1e40f415</td></tr><tr><td>Status:</td><td>UNKNOWN</td></tr><tr><td>Class:</td><td> (Details: http://terminology.hl7.org/CodeSystem/v3-ActCode ) </td></tr><tr><td>Type:</td><td> Group Session </td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/09c08b19-8811-438c-832e-7897bb54ecfd\
 … truncated; 94644 more characters
 ```
 
 ```http
-GET /openmrs/ws/fhir2/R4/Observation?patient=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa&_count=500
+GET /openmrs/ws/fhir2/R4/Observation?patient=09c08b19-8811-438c-832e-7897bb54ecfd&_count=500
 Host: localhost
 Accept: application/json
 Authorization: Bearer <jwt>
@@ -411,22 +412,22 @@ Authorization: Bearer <jwt>
   "link": [
     {
       "relation": "self",
-      "url": "http://localhost/openmrs/ws/fhir2/R4/Observation?_count=500&patient=2e3c5f55-bb41-4ff2-a93b-c0851390f9fa"
+      "url": "http://localhost/openmrs/ws/fhir2/R4/Observation?_count=500&patient=09c08b19-8811-438c-832e-7897bb54ecfd"
     }
   ],
   "entry": [
     {
-      "fullUrl": "http://localhost/openmrs/ws/fhir2/R4/Observation/75361920-cf15-41e4-966f-b6e2482e3d98",
+      "fullUrl": "http://localhost/openmrs/ws/fhir2/R4/Observation/568d4193-3175-495d-b023-93b892e5bbd8",
       "resource": {
         "resourceType": "Observation",
-        "id": "75361920-cf15-41e4-966f-b6e2482e3d98",
+        "id": "568d4193-3175-495d-b023-93b892e5bbd8",
         "meta": {
-          "versionId": "1787310378000",
-          "lastUpdated": "2026-08-21T11:06:18.000+00:00"
+          "versionId": "1787696027000",
+          "lastUpdated": "2026-08-25T22:13:47.000+00:00"
         },
         "text": {
           "status": "generated",
-          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>75361920-cf15-41e4-966f-b6e2482e3d98</td></tr><tr><td>Status:</td><td>FINAL</td></tr><tr><td>Category:</td><td> Exam </td></tr><tr><td>Code:</td><td>Temperature (c)</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2e3c5f55-bb41-4ff2-a93b-c0851390f9fa\">Betty Williams (OpenMRS ID: 100000Y)</a></td></tr><tr><td>Encounter:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Encounter/a5c99529-cd10-4795-b42c-2a75715199d9\">Encounter/a5c99529-cd10-4795-b42c-2a75715199d9</a></td></tr><t
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>568d4193-3175-495d-b023-93b892e5bbd8</td></tr><tr><td>Status:</td><td>FINAL</td></tr><tr><td>Category:</td><td> Exam </td></tr><tr><td>Code:</td><td>Temperature (c)</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/09c08b19-8811-438c-832e-7897bb54ecfd\">Betty Williams (OpenMRS ID: 100000Y)</a></td></tr><tr><td>Encounter:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Encounter/026474fb-df1b-4cf8-afed-b3c252bd9535\">Encounter/026474fb-df1b-4cf8-afed-b3c252bd9535</a></td></tr><t
 … truncated; 343680 more characters
 ```
 
